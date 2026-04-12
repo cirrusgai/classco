@@ -217,7 +217,7 @@ export function useConversation(
       messages: UIMessage<ChatMessageMetadata>[],
       agentIds: string[],
       agentConfigs: Record<string, unknown>[],
-      options: { triggerAgentId?: string; discussionTopic?: string },
+      options: { triggerAgentId?: string; discussionTopic?: string; freshDirectorState?: boolean },
       signal: AbortSignal,
     ) => {
       const mc = getModelConfig();
@@ -237,7 +237,8 @@ export function useConversation(
           discussionTopic: options.discussionTopic,
           ...(options.triggerAgentId ? { triggerAgentId: options.triggerAgentId } : {}),
         },
-        directorState: directorStateRef.current,
+        // Fresh state for independent requests (e.g. assistant) so turnCount starts at 0
+        directorState: options.freshDirectorState ? undefined : directorStateRef.current,
         userProfile: { nickname: useUserProfileStore.getState().nickname || undefined },
         apiKey: mc.apiKey,
         baseUrl: mc.baseUrl,
@@ -298,12 +299,13 @@ export function useConversation(
 
         // Step 2: Learning assistant provides tips (separate single-agent request)
         // Skip on initial greeting — assistant has nothing to coach on yet
+        // Use freshDirectorState so turnCount starts at 0 (independent of scene turns)
         if (!isInitial && !controller.signal.aborted) {
           await streamRequest(
             rawMessagesRef.current,
             [assistantAgentId],
             allConfigs,
-            { discussionTopic: scenario.setting },
+            { discussionTopic: scenario.setting, freshDirectorState: true },
             controller.signal,
           );
         }
