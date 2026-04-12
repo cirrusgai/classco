@@ -5,6 +5,7 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
+import { generateSuggestions, type SuggestedReply } from '../suggestion-generator';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -17,11 +18,6 @@ export interface ConversationMessage {
   agentColor?: string;
   agentAvatar?: string;
   timestamp: number;
-}
-
-export interface SuggestedReply {
-  text: string;
-  pinyin: string;
 }
 
 interface UseConversationReturn {
@@ -42,7 +38,6 @@ export function useConversation(
   difficulty: Difficulty,
 ): UseConversationReturn {
   const [displayMessages, setDisplayMessages] = useState<ConversationMessage[]>([]);
-  const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +58,12 @@ export function useConversation(
   const assistantMessages = useMemo(
     () => displayMessages.filter((m) => m.role === 'assistant' && m.agentId === assistantAgentId),
     [displayMessages, assistantAgentId],
+  );
+
+  // Generate suggestions client-side based on the last agent message + scenario vocab
+  const suggestedReplies = useMemo(
+    () => generateSuggestions(scenario, displayMessages),
+    [scenario, displayMessages],
   );
 
   // Build model config once for reuse
@@ -148,41 +149,15 @@ export function useConversation(
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
-                  // Parse and strip [SUGGESTIONS] from agent messages (scene agents include these for beginners)
-                  let cleanContent = sealed.content;
-                  const suggestionsMatch = sealed.content.match(
-                    /\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/,
-                  );
-                  if (suggestionsMatch) {
-                    cleanContent = sealed.content
-                      .replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/, '')
-                      .trim();
-                    try {
-                      const parsed = JSON.parse(suggestionsMatch[1]);
-                      if (Array.isArray(parsed.replies)) {
-                        setSuggestedReplies(parsed.replies);
-                      }
-                    } catch {
-                      // Invalid JSON — ignore suggestions
-                    }
-                  }
-
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: cleanContent }],
+                      parts: [{ type: 'text' as const, text: sealed.content }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-
-                  // Update displayed content to strip the suggestions tag
-                  if (cleanContent !== sealed.content) {
-                    return prev.map((m) =>
-                      m.id === msgId ? { ...m, content: cleanContent } : m,
-                    );
-                  }
                 }
                 return prev;
               });
@@ -325,7 +300,6 @@ export function useConversation(
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim()) return;
-      setSuggestedReplies([]);
       const userMsgId = `user-${Date.now()}`;
 
       rawMessagesRef.current = [

@@ -27,18 +27,7 @@ ${agent.speakingStyle}
 ${scenario.targetVocabulary.join(', ')}
 
 ## Target Grammar
-${scenario.targetGrammar.join('\n')}
-
-## Suggested Replies (IMPORTANT)
-After your Chinese dialogue, ALWAYS end your message with this exact format on a new line:
-[SUGGESTIONS]{"replies":[{"text":"Chinese reply","pinyin":"pinyin"},{"text":"Chinese reply 2","pinyin":"pinyin"}]}[/SUGGESTIONS]
-
-Provide 2-3 suggested Chinese replies the learner could say next.
-- Each reply should be a natural, contextually appropriate Chinese sentence
-- Keep replies short (under 15 characters)
-- Include accurate pinyin with tone marks
-- Make replies relevant to the scenario's target vocabulary and grammar
-- The suggestions block is hidden from the learner — only the Chinese dialogue is shown`;
+${scenario.targetGrammar.join('\n')}`;
 }
 
 export function buildReviewPrompt(
