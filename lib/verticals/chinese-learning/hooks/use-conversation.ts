@@ -135,15 +135,15 @@ export function useConversation(
               const chunk = event.data.content;
               const prev = fullContent[targetId] || '';
               // The orchestration re-emits full text chunks for trailing partial deltas.
-              // Detect re-emit: if the new chunk starts with [SUGGESTIONS] and we already
-              // have a [SUGGESTIONS] marker, replace the suggestions portion instead of appending.
-              if (chunk.includes('[SUGGESTIONS]') && prev.includes('[SUGGESTIONS]')) {
-                fullContent[targetId] = prev.split('[SUGGESTIONS]')[0] + chunk;
+              // Detect re-emit: if the new chunk contains [SUGGESTIONS and we already
+              // have one, replace the suggestions portion instead of appending.
+              if (chunk.includes('[SUGGESTIONS') && prev.includes('[SUGGESTIONS')) {
+                fullContent[targetId] = prev.split('[SUGGESTIONS')[0] + chunk;
               } else {
                 fullContent[targetId] = prev + chunk;
               }
-              // Display only content before [SUGGESTIONS]
-              const visible = fullContent[targetId].split('[SUGGESTIONS]')[0];
+              // Display only content before [SUGGESTIONS marker (partial or complete)
+              const visible = fullContent[targetId].split('[SUGGESTIONS')[0];
               setDisplayMessages((prevMsgs) =>
                 prevMsgs.map((m) =>
                   m.id === targetId ? { ...m, content: visible } : m,
