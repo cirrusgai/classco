@@ -1,5 +1,10 @@
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
+export interface VocabEntry {
+  pinyin: string;
+  meaning: string;
+}
+
 export interface AgentTemplate {
   role: string;
   name: string;
@@ -16,6 +21,7 @@ export interface ScenarioTemplate {
   setting: string;
   agents: AgentTemplate[];
   targetVocabulary: string[];
+  vocabularyDict: Record<string, VocabEntry>;
   targetGrammar: string[];
   learnerRole: { en: string; zh: string };
   successCriteria: string[];
