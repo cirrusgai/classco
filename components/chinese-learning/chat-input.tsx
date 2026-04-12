@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, type KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
 import { Send, Mic, MicOff, Loader2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +20,22 @@ interface ChatInputProps {
 export function ChatInput({ onSend, onStop, isStreaming, disabled, prefill, onPrefillConsumed }: ChatInputProps) {
   const { t } = useI18n();
   const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (prefill) {
       setValue(prefill);
       onPrefillConsumed?.();
+      // Focus input and select the ____ placeholder if present
+      requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.focus();
+        const idx = prefill.indexOf('____');
+        if (idx >= 0) {
+          el.setSelectionRange(idx, idx + 4);
+        }
+      });
     }
   }, [prefill, onPrefillConsumed]);
 
@@ -60,6 +71,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, prefill, onPr
     <div className="border-t bg-background px-4 py-3">
       <div className="flex items-center gap-2">
         <Input
+          ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}

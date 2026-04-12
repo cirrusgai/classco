@@ -6,7 +6,6 @@ import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/t
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
 import type { SuggestedReply } from '../suggestion-generator';
-import { generateSuggestions } from '../suggestion-generator';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -64,14 +63,7 @@ export function useConversation(
   const [llmSuggestions, setLlmSuggestions] = useState<SuggestedReply[]>([]);
   const suggestionAbortRef = useRef<AbortController | null>(null);
 
-  // Static suggestions as instant fallback, replaced by LLM suggestions when ready
-  const staticSuggestions = useMemo(
-    () => generateSuggestions(scenario, displayMessages),
-    [scenario, displayMessages],
-  );
-
-  // Show LLM suggestions if available, otherwise static fallback
-  const suggestedReplies = llmSuggestions.length > 0 ? llmSuggestions : staticSuggestions;
+  const suggestedReplies = llmSuggestions;
 
   // Fetch LLM-generated suggestions in the background (non-blocking)
   const fetchLlmSuggestions = useCallback(

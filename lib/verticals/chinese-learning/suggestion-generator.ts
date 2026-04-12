@@ -14,23 +14,22 @@ const CONTEXTUAL_REPLIES: Array<{
   {
     detect: /名字|叫什么|你叫/,
     replies: [
-      { text: '我叫...', pinyin: 'wǒ jiào...' },
-      { text: '你可以叫我...', pinyin: 'nǐ kěyǐ jiào wǒ...' },
+      { text: '我叫____', pinyin: 'wǒ jiào ____' },
+      { text: '你可以叫我____', pinyin: 'nǐ kěyǐ jiào wǒ ____' },
     ],
   },
   {
     detect: /哪个国家|哪里来|从哪/,
     replies: [
-      { text: '我是美国人', pinyin: 'wǒ shì Měiguó rén' },
-      { text: '我从英国来', pinyin: 'wǒ cóng Yīngguó lái' },
-      { text: '我是中国人', pinyin: 'wǒ shì Zhōngguó rén' },
+      { text: '我是____人', pinyin: 'wǒ shì ____ rén' },
+      { text: '我从____来', pinyin: 'wǒ cóng ____ lái' },
     ],
   },
   {
     detect: /学什么|什么专业|专业/,
     replies: [
-      { text: '我学计算机', pinyin: 'wǒ xué jìsuànjī' },
-      { text: '我学中文', pinyin: 'wǒ xué Zhōngwén' },
+      { text: '我学____', pinyin: 'wǒ xué ____' },
+      { text: '我的专业是____', pinyin: 'wǒ de zhuānyè shì ____' },
     ],
   },
   {
@@ -52,7 +51,7 @@ const CONTEXTUAL_REPLIES: Array<{
   {
     detect: /要什么|想吃|点什么|想要/,
     replies: [
-      { text: '我想要...', pinyin: 'wǒ xiǎng yào...' },
+      { text: '我想要____', pinyin: 'wǒ xiǎng yào ____' },
       { text: '有什么推荐？', pinyin: 'yǒu shénme tuījiàn?' },
       { text: '菜单在哪里？', pinyin: 'càidān zài nǎlǐ?' },
     ],
@@ -60,8 +59,8 @@ const CONTEXTUAL_REPLIES: Array<{
   {
     detect: /去哪|到哪|在哪/,
     replies: [
-      { text: '我想去...', pinyin: 'wǒ xiǎng qù...' },
-      { text: '请带我去...', pinyin: 'qǐng dài wǒ qù...' },
+      { text: '我想去____', pinyin: 'wǒ xiǎng qù ____' },
+      { text: '请带我去____', pinyin: 'qǐng dài wǒ qù ____' },
     ],
   },
   {
