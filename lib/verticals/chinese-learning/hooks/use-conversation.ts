@@ -116,7 +116,7 @@ export function useConversation(
 
   // Shared SSE stream reader — processes events and updates display messages
   const readStream = useCallback(
-    async (response: Response, signal: AbortSignal) => {
+    async (response: Response, signal: AbortSignal, onAgentEnd?: (content: string) => void) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
@@ -193,6 +193,8 @@ export function useConversation(
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
+                  // Fire suggestion fetch immediately when agent finishes
+                  onAgentEnd?.(sealed.content);
                 }
                 return prev;
               });
@@ -229,6 +231,7 @@ export function useConversation(
       agentConfigs: Record<string, unknown>[],
       options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean },
       signal: AbortSignal,
+      onAgentEnd?: (content: string) => void,
     ) => {
       const mc = getModelConfig();
       const requestBody = {
@@ -270,7 +273,7 @@ export function useConversation(
         throw new Error(`API error ${response.status}: ${errText}`);
       }
 
-      await readStream(response, signal);
+      await readStream(response, signal, onAgentEnd);
     },
     [getModelConfig, readStream],
   );
@@ -298,7 +301,7 @@ export function useConversation(
       try {
         const msgCountBefore = rawMessagesRef.current.length;
 
-        // Scene agents respond (only scene agent IDs → one agent per turn)
+        // Scene agents respond — fire LLM suggestions as soon as agent finishes speaking
         await streamRequest(
           messages,
           sceneAgentIds,
@@ -310,6 +313,7 @@ export function useConversation(
               'This is a language learning conversation. NEVER output END or USER — always dispatch an agent to respond to the learner.',
           },
           controller.signal,
+          (agentContent) => fetchLlmSuggestions(agentContent),
         );
 
         // If director returned USER/END without generating content, force an agent to speak
@@ -322,17 +326,8 @@ export function useConversation(
             allConfigs,
             { discussionTopic: scenario.setting, freshDirectorState: true },
             controller.signal,
+            (agentContent) => fetchLlmSuggestions(agentContent),
           );
-        }
-
-        // Fire LLM suggestion fetch in the background (non-blocking)
-        const lastRaw = rawMessagesRef.current[rawMessagesRef.current.length - 1];
-        if (lastRaw?.role === 'assistant') {
-          const lastText = lastRaw.parts
-            ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-            .map((p) => p.text)
-            .join('');
-          if (lastText) fetchLlmSuggestions(lastText);
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
