@@ -134,15 +134,19 @@ export function useConversation(
               if (!targetId) break;
               const chunk = event.data.content;
               const prev = fullContent[targetId] || '';
-              // The orchestration re-emits full text chunks for trailing partial deltas.
-              // Detect re-emit: if the new chunk contains [SUGGESTIONS and we already
-              // have one, replace the suggestions portion instead of appending.
-              if (chunk.includes('[SUGGESTIONS') && prev.includes('[SUGGESTIONS')) {
+              // The orchestration has two emit modes:
+              // 1. Incremental deltas (few chars) — append
+              // 2. Full chunk re-emits (trailing partials) — the chunk contains
+              //    all previous text plus new text, so use it as replacement.
+              // Detect mode 2: prev content is a prefix of the new chunk.
+              if (prev.length > 0 && chunk.length > prev.length && chunk.startsWith(prev)) {
+                fullContent[targetId] = chunk;
+              } else if (prev.length > 0 && chunk.includes('[SUGGESTIONS') && prev.includes('[SUGGESTIONS')) {
                 fullContent[targetId] = prev.split('[SUGGESTIONS')[0] + chunk;
               } else {
                 fullContent[targetId] = prev + chunk;
               }
-              // Display only content before [SUGGESTIONS marker (partial or complete)
+              // Display only content before [SUGGESTIONS marker
               const visible = fullContent[targetId].split('[SUGGESTIONS')[0];
               setDisplayMessages((prevMsgs) =>
                 prevMsgs.map((m) =>
