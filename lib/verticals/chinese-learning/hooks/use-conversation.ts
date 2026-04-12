@@ -84,6 +84,7 @@ export function useConversation(
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
+      const rawContent: Record<string, string> = {};
 
       while (true) {
         if (signal.aborted) break;
@@ -131,9 +132,13 @@ export function useConversation(
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
+              // Accumulate raw content (including [SUGGESTIONS] tags)
+              rawContent[targetId] = (rawContent[targetId] || '') + event.data.content;
+              // Only display content before [SUGGESTIONS tag
+              const displayText = rawContent[targetId].split('[SUGGESTIONS]')[0];
               setDisplayMessages((prev) =>
                 prev.map((m) =>
-                  m.id === targetId ? { ...m, content: m.content + event.data.content } : m,
+                  m.id === targetId ? { ...m, content: displayText } : m,
                 ),
               );
               break;
@@ -142,15 +147,16 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
+              // Parse [SUGGESTIONS] from raw content (not display content which is already stripped)
+              const fullText = rawContent[msgId] || '';
+              const { cleanContent, replies } = parseSuggestions(fullText);
+              if (replies.length > 0) {
+                setSuggestedReplies(replies);
+              }
+
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
-                if (sealed && sealed.content.trim()) {
-                  // Parse and strip [SUGGESTIONS] from content
-                  const { cleanContent, replies } = parseSuggestions(sealed.content);
-                  if (replies.length > 0) {
-                    setSuggestedReplies(replies);
-                  }
-
+                if (sealed) {
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
@@ -160,12 +166,10 @@ export function useConversation(
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-
-                  if (cleanContent !== sealed.content) {
-                    return prev.map((m) =>
-                      m.id === msgId ? { ...m, content: cleanContent } : m,
-                    );
-                  }
+                  // Ensure display shows clean content
+                  return prev.map((m) =>
+                    m.id === msgId ? { ...m, content: cleanContent } : m,
+                  );
                 }
                 return prev;
               });
