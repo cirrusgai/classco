@@ -58,19 +58,136 @@ export function useConversation(
     [displayMessages, assistantAgentId],
   );
 
-  const streamRequest = useCallback(
-    async (messages: UIMessage<ChatMessageMetadata>[], isInitial: boolean) => {
-      const mc = getCurrentModelConfig();
-      if (!mc.apiKey && mc.requiresApiKey !== false && !mc.isServerConfigured) {
-        setError('configureProvider');
-        return;
+  // Build model config once for reuse
+  const getModelConfig = useCallback(() => {
+    const mc = getCurrentModelConfig();
+    return {
+      apiKey: mc.apiKey,
+      baseUrl: mc.baseUrl || undefined,
+      model: mc.modelString,
+      providerType: mc.providerType,
+      requiresApiKey: mc.requiresApiKey,
+      isServerConfigured: mc.isServerConfigured,
+    };
+  }, []);
+
+  // Shared SSE stream reader — processes events and updates display messages
+  const readStream = useCallback(
+    async (response: Response, signal: AbortSignal) => {
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+      let currentMsgId: string | null = null;
+
+      while (true) {
+        if (signal.aborted) break;
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+
+        const parts = sseBuffer.split('\n\n');
+        sseBuffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data: ')) continue;
+
+          let event: StatelessEvent;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
+
+          switch (event.type) {
+            case 'thinking':
+              setIsThinking(true);
+              break;
+
+            case 'agent_start':
+              setIsThinking(false);
+              currentMsgId = event.data.messageId;
+              setDisplayMessages((prev) => [
+                ...prev,
+                {
+                  id: event.data.messageId,
+                  role: 'assistant',
+                  content: '',
+                  agentId: event.data.agentId,
+                  agentName: event.data.agentName,
+                  agentColor: event.data.agentColor || undefined,
+                  agentAvatar: event.data.agentAvatar || undefined,
+                  timestamp: Date.now(),
+                },
+              ]);
+              break;
+
+            case 'text_delta': {
+              const targetId = event.data.messageId ?? currentMsgId;
+              if (!targetId) break;
+              setDisplayMessages((prev) =>
+                prev.map((m) =>
+                  m.id === targetId ? { ...m, content: m.content + event.data.content } : m,
+                ),
+              );
+              break;
+            }
+
+            case 'agent_end': {
+              const msgId = event.data.messageId;
+              const agentId = event.data.agentId;
+              setDisplayMessages((prev) => {
+                const sealed = prev.find((m) => m.id === msgId);
+                if (sealed && sealed.content.trim()) {
+                  rawMessagesRef.current = [
+                    ...rawMessagesRef.current,
+                    {
+                      id: msgId,
+                      role: 'assistant' as const,
+                      parts: [{ type: 'text' as const, text: sealed.content }],
+                      metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
+                    },
+                  ];
+                }
+                return prev;
+              });
+              currentMsgId = null;
+              break;
+            }
+
+            case 'cue_user':
+              setIsThinking(false);
+              break;
+
+            case 'done':
+              if (event.data.directorState) {
+                directorStateRef.current = event.data.directorState;
+              }
+              break;
+
+            case 'error':
+              setError(event.data.message);
+              break;
+          }
+        }
       }
+      reader.releaseLock();
+    },
+    [],
+  );
 
-      // Serialize agent configs for inline transport (strip Date/boolean fields not in API schema)
-      const agentConfigs = agents.allAgentConfigs.map(
-        ({ createdAt: _c, updatedAt: _u, isDefault: _d, ...rest }) => rest,
-      );
-
+  // Send a request to the chat API and stream the response
+  const streamRequest = useCallback(
+    async (
+      messages: UIMessage<ChatMessageMetadata>[],
+      agentIds: string[],
+      agentConfigs: Record<string, unknown>[],
+      options: { triggerAgentId?: string; discussionTopic?: string },
+      signal: AbortSignal,
+    ) => {
+      const mc = getModelConfig();
       const requestBody = {
         messages,
         storeState: {
@@ -81,20 +198,51 @@ export function useConversation(
           whiteboardOpen: false,
         },
         config: {
-          agentIds: agents.allAgentIds,
+          agentIds,
           agentConfigs,
           sessionType: 'discussion' as const,
-          discussionTopic: scenario.setting,
-          ...(isInitial ? { triggerAgentId: agents.triggerAgentId } : {}),
+          discussionTopic: options.discussionTopic,
+          ...(options.triggerAgentId ? { triggerAgentId: options.triggerAgentId } : {}),
         },
         directorState: directorStateRef.current,
         userProfile: { nickname: useUserProfileStore.getState().nickname || undefined },
         apiKey: mc.apiKey,
-        baseUrl: mc.baseUrl || undefined,
-        model: mc.modelString,
+        baseUrl: mc.baseUrl,
+        model: mc.model,
         providerType: mc.providerType,
         requiresApiKey: mc.requiresApiKey,
       };
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API error ${response.status}: ${errText}`);
+      }
+
+      await readStream(response, signal);
+    },
+    [getModelConfig, readStream],
+  );
+
+  // Run a full turn: scene agents respond, then assistant provides tips
+  const runTurn = useCallback(
+    async (messages: UIMessage<ChatMessageMetadata>[], isInitial: boolean) => {
+      const mc = getModelConfig();
+      if (!mc.apiKey && mc.requiresApiKey !== false && !mc.isServerConfigured) {
+        setError('configureProvider');
+        return;
+      }
+
+      const sceneAgentIds = agents.sceneAgents.map((a) => a.id);
+      const allConfigs = agents.allAgentConfigs.map(
+        ({ createdAt: _c, updatedAt: _u, isDefault: _d, ...rest }) => rest,
+      );
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -102,119 +250,30 @@ export function useConversation(
       setIsThinking(true);
       setError(null);
 
-      let currentMsgId: string | null = null;
-
       try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
-        });
+        // Step 1: Scene agents respond (only scene agent IDs → one agent per turn)
+        await streamRequest(
+          messages,
+          sceneAgentIds,
+          allConfigs,
+          {
+            triggerAgentId: isInitial ? agents.triggerAgentId : undefined,
+            discussionTopic: scenario.setting,
+          },
+          controller.signal,
+        );
 
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`API error ${response.status}: ${errText}`);
+        // Step 2: Learning assistant provides tips (separate single-agent request)
+        // Skip on initial greeting — assistant has nothing to coach on yet
+        if (!isInitial && !controller.signal.aborted) {
+          await streamRequest(
+            rawMessagesRef.current,
+            [assistantAgentId],
+            allConfigs,
+            { discussionTopic: scenario.setting },
+            controller.signal,
+          );
         }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response body');
-
-        const decoder = new TextDecoder();
-        let sseBuffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          sseBuffer += decoder.decode(value, { stream: true });
-
-          const parts = sseBuffer.split('\n\n');
-          sseBuffer = parts.pop() || '';
-
-          for (const part of parts) {
-            const line = part.trim();
-            if (!line.startsWith('data: ')) continue;
-
-            let event: StatelessEvent;
-            try {
-              event = JSON.parse(line.slice(6));
-            } catch {
-              continue;
-            }
-
-            switch (event.type) {
-              case 'thinking':
-                setIsThinking(true);
-                break;
-
-              case 'agent_start':
-                setIsThinking(false);
-                currentMsgId = event.data.messageId;
-                setDisplayMessages((prev) => [
-                  ...prev,
-                  {
-                    id: event.data.messageId,
-                    role: 'assistant',
-                    content: '',
-                    agentId: event.data.agentId,
-                    agentName: event.data.agentName,
-                    agentColor: event.data.agentColor || undefined,
-                    agentAvatar: event.data.agentAvatar || undefined,
-                    timestamp: Date.now(),
-                  },
-                ]);
-                break;
-
-              case 'text_delta': {
-                const targetId = event.data.messageId ?? currentMsgId;
-                if (!targetId) break;
-                setDisplayMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === targetId ? { ...m, content: m.content + event.data.content } : m,
-                  ),
-                );
-                break;
-              }
-
-              case 'agent_end': {
-                const msgId = event.data.messageId;
-                const agentId = event.data.agentId;
-                setDisplayMessages((prev) => {
-                  const sealed = prev.find((m) => m.id === msgId);
-                  if (sealed && sealed.content.trim()) {
-                    rawMessagesRef.current = [
-                      ...rawMessagesRef.current,
-                      {
-                        id: msgId,
-                        role: 'assistant' as const,
-                        parts: [{ type: 'text' as const, text: sealed.content }],
-                        metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
-                      },
-                    ];
-                  }
-                  return prev;
-                });
-                currentMsgId = null;
-                break;
-              }
-
-              case 'cue_user':
-                setIsThinking(false);
-                break;
-
-              case 'done':
-                if (event.data.directorState) {
-                  directorStateRef.current = event.data.directorState;
-                }
-                break;
-
-              case 'error':
-                setError(event.data.message);
-                break;
-            }
-          }
-        }
-        reader.releaseLock();
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
@@ -227,15 +286,15 @@ export function useConversation(
         abortControllerRef.current = null;
       }
     },
-    [agents, scenario.setting],
+    [agents, assistantAgentId, scenario.setting, getModelConfig, streamRequest],
   );
 
   const startConversation = useCallback(async () => {
     rawMessagesRef.current = [];
     directorStateRef.current = undefined;
     setDisplayMessages([]);
-    await streamRequest([], true);
-  }, [streamRequest]);
+    await runTurn([], true);
+  }, [runTurn]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -252,9 +311,9 @@ export function useConversation(
         { id: userMsgId, role: 'user', content, timestamp: Date.now() },
       ]);
 
-      await streamRequest(rawMessagesRef.current, false);
+      await runTurn(rawMessagesRef.current, false);
     },
-    [streamRequest],
+    [runTurn],
   );
 
   const stopStreaming = useCallback(() => {
