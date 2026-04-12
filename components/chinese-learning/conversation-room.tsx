@@ -145,9 +145,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           )}
           <ChatInput onSend={handleSend} onStop={stopStreaming} isStreaming={isStreaming} disabled={isConfigError} />
         </div>
-        <div className="hidden md:block">
-          <AssistantPanel messages={assistantMessages} />
-        </div>
+        {/* Assistant panel hidden — tips replaced by inline suggestions from scene agents */}
       </div>
     </div>
   );

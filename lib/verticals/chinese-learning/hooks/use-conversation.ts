@@ -297,18 +297,9 @@ export function useConversation(
           controller.signal,
         );
 
-        // Step 2: Learning assistant provides tips (separate single-agent request)
-        // Skip on initial greeting — assistant has nothing to coach on yet
-        // Use freshDirectorState so turnCount starts at 0 (independent of scene turns)
-        if (!isInitial && !controller.signal.aborted) {
-          await streamRequest(
-            rawMessagesRef.current,
-            [assistantAgentId],
-            allConfigs,
-            { discussionTopic: scenario.setting, freshDirectorState: true },
-            controller.signal,
-          );
-        }
+        // Assistant call removed — suggestions are now generated inline by scene agents,
+        // saving one API call per turn. Assistant panel can be re-enabled later for
+        // grammar/pronunciation coaching when rate limits are less of a concern.
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
