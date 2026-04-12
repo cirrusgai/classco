@@ -9,6 +9,15 @@ import type { SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
+interface BufferedAgent {
+  message: ConversationMessage;
+  rawId: string;
+  rawText: string;
+  agentId: string;
+  agentName?: string;
+  agentColor?: string;
+}
+
 export interface ConversationMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -62,33 +71,6 @@ export function useConversation(
 
   const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
 
-  // Fetch suggestions from LLM based on last agent message
-  const fetchSuggestions = useCallback(async (lastAgentText: string) => {
-    setSuggestedReplies([]);
-    try {
-      const mc = getCurrentModelConfig();
-      const res = await fetch('/api/suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lastAgentMessage: lastAgentText,
-          apiKey: mc.apiKey,
-          baseUrl: mc.baseUrl || undefined,
-          model: mc.modelString,
-          providerType: mc.providerType,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.replies) && data.replies.length > 0) {
-          setSuggestedReplies(data.replies.slice(0, 3));
-        }
-      }
-    } catch {
-      // Suggestion fetch failed — not critical
-    }
-  }, []);
-
   // Build model config once for reuse
   const getModelConfig = useCallback(() => {
     const mc = getCurrentModelConfig();
@@ -102,15 +84,17 @@ export function useConversation(
     };
   }, []);
 
-  // Shared SSE stream reader — processes events and updates display messages
-  const readStream = useCallback(
-    async (response: Response, signal: AbortSignal) => {
+  // Read SSE stream, buffer agent messages, fetch suggestions, then flush together
+  const readStreamWithSuggestions = useCallback(
+    async (response: Response, signal: AbortSignal, shouldFetchSuggestions: boolean) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
+      const bufferedAgents: BufferedAgent[] = [];
+      const pendingContent: Record<string, string> = {};
 
       while (true) {
         if (signal.aborted) break;
@@ -138,11 +122,10 @@ export function useConversation(
               break;
 
             case 'agent_start':
-              setIsThinking(false);
               currentMsgId = event.data.messageId;
-              setDisplayMessages((prev) => [
-                ...prev,
-                {
+              pendingContent[event.data.messageId] = '';
+              bufferedAgents.push({
+                message: {
                   id: event.data.messageId,
                   role: 'assistant',
                   content: '',
@@ -152,38 +135,40 @@ export function useConversation(
                   agentAvatar: event.data.agentAvatar || undefined,
                   timestamp: Date.now(),
                 },
-              ]);
+                rawId: event.data.messageId,
+                rawText: '',
+                agentId: event.data.agentId,
+                agentName: event.data.agentName,
+                agentColor: event.data.agentColor,
+              });
               break;
 
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
-              setDisplayMessages((prev) =>
-                prev.map((m) =>
-                  m.id === targetId ? { ...m, content: m.content + event.data.content } : m,
-                ),
-              );
+              pendingContent[targetId] = (pendingContent[targetId] || '') + event.data.content;
+              const agent = bufferedAgents.find((a) => a.rawId === targetId);
+              if (agent) {
+                agent.message.content = pendingContent[targetId];
+                agent.rawText = pendingContent[targetId];
+              }
               break;
             }
 
             case 'agent_end': {
               const msgId = event.data.messageId;
-              const agentId = event.data.agentId;
-              setDisplayMessages((prev) => {
-                const sealed = prev.find((m) => m.id === msgId);
-                if (sealed && sealed.content.trim()) {
-                  rawMessagesRef.current = [
-                    ...rawMessagesRef.current,
-                    {
-                      id: msgId,
-                      role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: sealed.content }],
-                      metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
-                    },
-                  ];
-                }
-                return prev;
-              });
+              const agent = bufferedAgents.find((a) => a.rawId === msgId);
+              if (agent && agent.rawText.trim()) {
+                rawMessagesRef.current = [
+                  ...rawMessagesRef.current,
+                  {
+                    id: msgId,
+                    role: 'assistant' as const,
+                    parts: [{ type: 'text' as const, text: agent.rawText }],
+                    metadata: { agentId: agent.agentId, senderName: agent.agentName, agentColor: agent.agentColor },
+                  },
+                ];
+              }
               currentMsgId = null;
               break;
             }
@@ -205,17 +190,56 @@ export function useConversation(
         }
       }
       reader.releaseLock();
+
+      // Get the last agent's text for suggestions
+      const lastAgent = [...bufferedAgents].reverse().find((a) => a.rawText.trim());
+
+      if (shouldFetchSuggestions && lastAgent) {
+        // Fetch suggestions BEFORE showing the messages
+        const mc = getCurrentModelConfig();
+        try {
+          const res = await fetch('/api/suggestions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lastAgentMessage: lastAgent.rawText,
+              apiKey: mc.apiKey,
+              baseUrl: mc.baseUrl || undefined,
+              model: mc.modelString,
+              providerType: mc.providerType,
+            }),
+            signal,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.replies) && data.replies.length > 0) {
+              setSuggestedReplies(data.replies.slice(0, 3));
+            }
+          }
+        } catch {
+          // Suggestions failed — still show messages
+        }
+      }
+
+      // Flush all buffered messages to display at once
+      if (bufferedAgents.length > 0) {
+        setIsThinking(false);
+        setDisplayMessages((prev) => [
+          ...prev,
+          ...bufferedAgents.filter((a) => a.rawText.trim()).map((a) => a.message),
+        ]);
+      }
     },
     [],
   );
 
-  // Send a request to the chat API and stream the response
+  // Send a request to the chat API, buffer response, fetch suggestions, then show together
   const streamRequest = useCallback(
     async (
       messages: UIMessage<ChatMessageMetadata>[],
       agentIds: string[],
       agentConfigs: Record<string, unknown>[],
-      options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean },
+      options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean; fetchSuggestions?: boolean },
       signal: AbortSignal,
     ) => {
       const mc = getModelConfig();
@@ -258,9 +282,9 @@ export function useConversation(
         throw new Error(`API error ${response.status}: ${errText}`);
       }
 
-      await readStream(response, signal);
+      await readStreamWithSuggestions(response, signal, options.fetchSuggestions ?? false);
     },
-    [getModelConfig, readStream],
+    [getModelConfig, readStreamWithSuggestions],
   );
 
   // Run a full turn: scene agents respond, then assistant provides tips
@@ -286,7 +310,7 @@ export function useConversation(
       try {
         setSuggestedReplies([]);
 
-        // Scene agents respond
+        // Scene agents respond — buffer messages, fetch suggestions, then show together
         await streamRequest(
           messages,
           sceneAgentIds,
@@ -296,19 +320,11 @@ export function useConversation(
             discussionTopic: scenario.setting,
             discussionPrompt:
               'This is a language learning conversation. NEVER output END or USER — always dispatch an agent to respond to the learner.',
+            fetchSuggestions: !isInitial,
           },
           controller.signal,
         );
 
-        // Fetch LLM suggestions based on what the agent just said (non-blocking)
-        const lastMsg = rawMessagesRef.current[rawMessagesRef.current.length - 1];
-        if (lastMsg?.role === 'assistant') {
-          const text = lastMsg.parts
-            ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-            .map((p) => p.text)
-            .join('');
-          if (text) fetchSuggestions(text);
-        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
