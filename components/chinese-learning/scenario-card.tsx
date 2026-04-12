@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import type { ScenarioTemplate, Difficulty } from '@/lib/verticals/chinese-learning/types';
+import { SessionBadge } from './session-badge';
 
 const DIFFICULTY_VARIANT: Record<Difficulty, 'secondary' | 'default' | 'destructive'> = {
   beginner: 'secondary',
@@ -24,9 +25,10 @@ interface ScenarioCardProps {
   scenario: ScenarioTemplate;
   index: number;
   onSelect: (id: string) => void;
+  completedCount?: number;
 }
 
-export function ScenarioCard({ scenario, index, onSelect }: ScenarioCardProps) {
+export function ScenarioCard({ scenario, index, onSelect, completedCount = 0 }: ScenarioCardProps) {
   const { t, locale } = useI18n();
   const lang = locale === 'zh-CN' ? 'zh' : 'en';
 
@@ -46,6 +48,7 @@ export function ScenarioCard({ scenario, index, onSelect }: ScenarioCardProps) {
                 <Badge variant={DIFFICULTY_VARIANT[scenario.difficulty]}>
                   {t(`chineseLearning.difficulty.${scenario.difficulty}`)}
                 </Badge>
+                <SessionBadge count={completedCount} />
               </div>
             </div>
           </div>

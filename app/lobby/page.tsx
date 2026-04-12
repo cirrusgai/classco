@@ -5,11 +5,13 @@ import { motion } from 'motion/react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { getAllScenarios } from '@/lib/verticals/chinese-learning/scenarios';
 import { ScenarioCard } from '@/components/chinese-learning/scenario-card';
+import { useSessionHistory } from '@/lib/hooks/use-session-history';
 
 export default function LobbyPage() {
   const router = useRouter();
   const { t } = useI18n();
   const scenarios = getAllScenarios();
+  const { getScenarioSessions } = useSessionHistory();
 
   return (
     <div className="min-h-screen bg-background">
@@ -35,6 +37,7 @@ export default function LobbyPage() {
               scenario={scenario}
               index={i}
               onSelect={(id) => router.push(`/room/${id}`)}
+              completedCount={getScenarioSessions(scenario.id).length}
             />
           ))}
         </div>

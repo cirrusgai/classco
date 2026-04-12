@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { useConversation } from '@/lib/verticals/chinese-learning/hooks/use-conversation';
+import { useSessionHistory } from '@/lib/hooks/use-session-history';
 import { MessageList } from './message-list';
 import { AssistantPanel } from './assistant-panel';
 import { ChatInput } from './chat-input';
@@ -42,6 +43,8 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
     endSession,
   } = useConversation(scenario, difficulty);
 
+  const { addEntry } = useSessionHistory();
+
   useEffect(() => {
     startConversation();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -54,9 +57,14 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   const handleEnd = useCallback(async () => {
     const sessionId = await endSession();
     if (sessionId) {
+      addEntry({
+        sessionId,
+        scenarioId: scenario.id,
+        completedAt: new Date().toISOString(),
+      });
       router.push(`/review/${sessionId}`);
     }
-  }, [endSession, router]);
+  }, [endSession, router, addEntry, scenario.id]);
 
   const isConfigError = error === 'configureProvider';
 
