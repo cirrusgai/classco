@@ -261,6 +261,8 @@ export function useConversation(
       setError(null);
 
       try {
+        const msgCountBefore = rawMessagesRef.current.length;
+
         // Scene agents respond (only scene agent IDs → one agent per turn)
         await streamRequest(
           messages,
@@ -270,14 +272,23 @@ export function useConversation(
             triggerAgentId: isInitial ? agents.triggerAgentId : undefined,
             discussionTopic: scenario.setting,
             discussionPrompt:
-              'This is a language learning conversation. NEVER output END — always dispatch an agent to continue the dialogue. The conversation only ends when the user leaves.',
+              'This is a language learning conversation. NEVER output END or USER — always dispatch an agent to respond to the learner.',
           },
           controller.signal,
         );
 
-        // Assistant call removed — suggestions are now generated inline by scene agents,
-        // saving one API call per turn. Assistant panel can be re-enabled later for
-        // grammar/pronunciation coaching when rate limits are less of a concern.
+        // If director returned USER/END without generating content, force an agent to speak
+        const noNewContent = rawMessagesRef.current.length === msgCountBefore;
+        if (!isInitial && noNewContent && !controller.signal.aborted) {
+          const randomAgent = sceneAgentIds[Math.floor(Math.random() * sceneAgentIds.length)];
+          await streamRequest(
+            rawMessagesRef.current,
+            [randomAgent],
+            allConfigs,
+            { discussionTopic: scenario.setting, freshDirectorState: true },
+            controller.signal,
+          );
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error

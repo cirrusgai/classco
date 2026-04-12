@@ -6,38 +6,92 @@ export interface SuggestedReply {
   pinyin: string;
 }
 
-/**
- * Common conversational replies grouped by context.
- * These are universal responses that work across scenarios.
- */
-const COMMON_REPLIES: SuggestedReply[] = [
-  { text: '你好！', pinyin: 'nǐ hǎo!' },
-  { text: '谢谢', pinyin: 'xièxie' },
+/** Context-specific reply patterns keyed by detection regex */
+const CONTEXTUAL_REPLIES: Array<{
+  detect: RegExp;
+  replies: SuggestedReply[];
+}> = [
+  {
+    detect: /名字|叫什么|你叫/,
+    replies: [
+      { text: '我叫...', pinyin: 'wǒ jiào...' },
+      { text: '你可以叫我...', pinyin: 'nǐ kěyǐ jiào wǒ...' },
+    ],
+  },
+  {
+    detect: /哪个国家|哪里来|从哪/,
+    replies: [
+      { text: '我是美国人', pinyin: 'wǒ shì Měiguó rén' },
+      { text: '我从英国来', pinyin: 'wǒ cóng Yīngguó lái' },
+      { text: '我是中国人', pinyin: 'wǒ shì Zhōngguó rén' },
+    ],
+  },
+  {
+    detect: /学什么|什么专业|专业/,
+    replies: [
+      { text: '我学计算机', pinyin: 'wǒ xué jìsuànjī' },
+      { text: '我学中文', pinyin: 'wǒ xué Zhōngwén' },
+    ],
+  },
+  {
+    detect: /喜欢|爱好|兴趣/,
+    replies: [
+      { text: '我喜欢运动', pinyin: 'wǒ xǐhuān yùndòng' },
+      { text: '我喜欢音乐', pinyin: 'wǒ xǐhuān yīnyuè' },
+      { text: '我喜欢旅游', pinyin: 'wǒ xǐhuān lǚyóu' },
+    ],
+  },
+  {
+    detect: /多少钱|价格|几块/,
+    replies: [
+      { text: '太贵了', pinyin: 'tài guì le' },
+      { text: '便宜一点吧', pinyin: 'piányi yīdiǎn ba' },
+      { text: '好的，我要', pinyin: 'hǎo de, wǒ yào' },
+    ],
+  },
+  {
+    detect: /要什么|想吃|点什么|想要/,
+    replies: [
+      { text: '我想要...', pinyin: 'wǒ xiǎng yào...' },
+      { text: '有什么推荐？', pinyin: 'yǒu shénme tuījiàn?' },
+      { text: '菜单在哪里？', pinyin: 'càidān zài nǎlǐ?' },
+    ],
+  },
+  {
+    detect: /去哪|到哪|在哪/,
+    replies: [
+      { text: '我想去...', pinyin: 'wǒ xiǎng qù...' },
+      { text: '请带我去...', pinyin: 'qǐng dài wǒ qù...' },
+    ],
+  },
+  {
+    detect: /怎么样|好不好|觉得/,
+    replies: [
+      { text: '我觉得很好', pinyin: 'wǒ juéde hěn hǎo' },
+      { text: '不太好', pinyin: 'bú tài hǎo' },
+      { text: '还可以', pinyin: 'hái kěyǐ' },
+    ],
+  },
+  {
+    detect: /吗[？?]?\s*$/,
+    replies: [
+      { text: '是的', pinyin: 'shì de' },
+      { text: '不是', pinyin: 'bú shì' },
+      { text: '对', pinyin: 'duì' },
+    ],
+  },
+];
+
+/** Fallback replies when no context matches */
+const FALLBACK_REPLIES: SuggestedReply[] = [
   { text: '好的', pinyin: 'hǎo de' },
-  { text: '是的', pinyin: 'shì de' },
-  { text: '不是', pinyin: 'bú shì' },
-  { text: '我不知道', pinyin: 'wǒ bù zhīdào' },
+  { text: '谢谢', pinyin: 'xièxie' },
   { text: '请再说一遍', pinyin: 'qǐng zài shuō yī biàn' },
   { text: '什么意思？', pinyin: 'shénme yìsi?' },
-  { text: '可以', pinyin: 'kěyǐ' },
-  { text: '不用了', pinyin: 'bú yòng le' },
+  { text: '我不知道', pinyin: 'wǒ bù zhīdào' },
 ];
 
-/** Replies for when someone asks your name */
-const NAME_REPLIES: SuggestedReply[] = [
-  { text: '我叫...', pinyin: 'wǒ jiào...' },
-  { text: '你好，我是学生', pinyin: 'nǐ hǎo, wǒ shì xuéshēng' },
-  { text: '很高兴认识你', pinyin: 'hěn gāoxìng rènshi nǐ' },
-];
-
-/** Replies for questions (你...吗?, ...吗?, 什么, 哪) */
-const QUESTION_REPLIES: SuggestedReply[] = [
-  { text: '是的', pinyin: 'shì de' },
-  { text: '不是', pinyin: 'bú shì' },
-  { text: '对', pinyin: 'duì' },
-];
-
-/** Replies for greetings */
+/** First-greeting replies (only for the very first agent message) */
 const GREETING_REPLIES: SuggestedReply[] = [
   { text: '你好！', pinyin: 'nǐ hǎo!' },
   { text: '你好，很高兴认识你', pinyin: 'nǐ hǎo, hěn gāoxìng rènshi nǐ' },
@@ -56,30 +110,32 @@ export function generateSuggestions(
   if (!lastAgentMsg) return [];
 
   const text = lastAgentMsg.content;
+  if (!text) return [];
+
+  const userMessages = messages.filter((m) => m.role === 'user');
+  const alreadySaid = new Set(userMessages.map((m) => m.content));
+
+  // First greeting: show greeting replies only if user hasn't spoken yet
+  if (userMessages.length === 0) {
+    return GREETING_REPLIES.filter((r) => !alreadySaid.has(r.text)).slice(0, 3);
+  }
+
+  // Match contextual patterns against the last agent message
   const suggestions: SuggestedReply[] = [];
-
-  // Detect greeting (first message or 你好/欢迎)
-  const agentMessages = messages.filter((m) => m.role === 'assistant');
-  if (agentMessages.length <= 1 || /你好|欢迎|认识/.test(text)) {
-    suggestions.push(...GREETING_REPLIES);
+  for (const { detect, replies } of CONTEXTUAL_REPLIES) {
+    if (detect.test(text)) {
+      for (const r of replies) {
+        if (!alreadySaid.has(r.text)) suggestions.push(r);
+      }
+      break; // Use the first matching context only
+    }
   }
 
-  // Detect name question
-  if (/名字|叫什么|你叫/.test(text)) {
-    suggestions.push(...NAME_REPLIES);
-  }
-
-  // Detect yes/no question (吗?, 吧?)
-  if (/吗[？?]?$|吧[？?]?$/.test(text.trim())) {
-    suggestions.push(...QUESTION_REPLIES);
-  }
-
-  // Add scenario-specific vocabulary as reply fragments
-  const dict = scenario.vocabularyDict;
-  const vocabSuggestions = buildVocabSuggestions(dict, text, messages);
+  // Add scenario vocab suggestions
+  const vocabSuggestions = buildVocabSuggestions(scenario.vocabularyDict, text, alreadySaid);
   suggestions.push(...vocabSuggestions);
 
-  // Deduplicate by text and limit to 3
+  // Deduplicate and limit to 3
   const seen = new Set<string>();
   const unique: SuggestedReply[] = [];
   for (const s of suggestions) {
@@ -90,11 +146,10 @@ export function generateSuggestions(
     if (unique.length >= 3) break;
   }
 
-  // If we have fewer than 2, pad with common replies not yet used
+  // Pad with fallbacks if needed
   if (unique.length < 2) {
-    const userTexts = new Set(messages.filter((m) => m.role === 'user').map((m) => m.content));
-    for (const r of COMMON_REPLIES) {
-      if (!seen.has(r.text) && !userTexts.has(r.text)) {
+    for (const r of FALLBACK_REPLIES) {
+      if (!seen.has(r.text) && !alreadySaid.has(r.text)) {
         unique.push(r);
         seen.add(r.text);
       }
@@ -106,25 +161,19 @@ export function generateSuggestions(
 }
 
 /**
- * Build suggestions from scenario vocabulary that's relevant to the current context.
+ * Build suggestions from scenario vocabulary relevant to the agent's last message.
  */
 function buildVocabSuggestions(
   dict: Record<string, VocabEntry>,
   lastAgentText: string,
-  messages: ConversationMessage[],
+  alreadySaid: Set<string>,
 ): SuggestedReply[] {
   const results: SuggestedReply[] = [];
-  const alreadySaid = new Set(
-    messages.filter((m) => m.role === 'user').map((m) => m.content),
-  );
 
   for (const [word, entry] of Object.entries(dict)) {
-    // Skip single-character words (too vague as standalone replies)
     if (word.length < 2) continue;
-    // Skip words the user already said
     if (alreadySaid.has(word)) continue;
-    // Prefer words that relate to what the agent just said
-    // (simple heuristic: share at least one character)
+    // Include words that share characters with the agent's message
     const shares = [...word].some((ch) => lastAgentText.includes(ch));
     if (shares) {
       results.push({ text: word, pinyin: entry.pinyin });
