@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ interface ConversationRoomProps {
 export function ConversationRoom({ scenario, difficulty, onBack }: ConversationRoomProps) {
   const { t, locale } = useI18n();
   const lang = locale === 'zh-CN' ? 'zh' : 'en';
+  const router = useRouter();
 
   const {
     sceneMessages,
@@ -37,6 +39,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
     sendMessage,
     startConversation,
     stopStreaming,
+    endSession,
   } = useConversation(scenario, difficulty);
 
   useEffect(() => {
@@ -47,6 +50,13 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
     (content: string) => { sendMessage(content); },
     [sendMessage],
   );
+
+  const handleEnd = useCallback(async () => {
+    const sessionId = await endSession();
+    if (sessionId) {
+      router.push(`/review/${sessionId}`);
+    }
+  }, [endSession, router]);
 
   const isConfigError = error === 'configureProvider';
 
@@ -68,6 +78,16 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
         <Badge variant={DIFFICULTY_VARIANT[difficulty]}>
           {t(`chineseLearning.difficulty.${difficulty}`)}
         </Badge>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleEnd}
+          disabled={isStreaming || sceneMessages.length === 0}
+          className="gap-1.5"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          {t('chineseLearning.room.endAndReview')}
+        </Button>
       </motion.header>
 
       {error && (

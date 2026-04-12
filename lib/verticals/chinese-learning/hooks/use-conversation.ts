@@ -28,6 +28,7 @@ interface UseConversationReturn {
   sendMessage: (content: string) => Promise<void>;
   startConversation: () => Promise<void>;
   stopStreaming: () => void;
+  endSession: () => Promise<string | null>;
 }
 
 export function useConversation(
@@ -42,6 +43,8 @@ export function useConversation(
   const rawMessagesRef = useRef<UIMessage<ChatMessageMetadata>[]>([]);
   const directorStateRef = useRef<DirectorState | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const sessionIdRef = useRef<string>(`session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const startedAtRef = useRef<string>(new Date().toISOString());
 
   const agents = useMemo(() => scenarioToAgents(scenario, difficulty), [scenario, difficulty]);
   const assistantAgentId = agents.assistantAgent.id;
@@ -258,6 +261,37 @@ export function useConversation(
     abortControllerRef.current?.abort();
   }, []);
 
+  const endSession = useCallback(async (): Promise<string | null> => {
+    abortControllerRef.current?.abort();
+
+    const allMessages = displayMessages;
+    if (allMessages.length === 0) return null;
+
+    const sessionId = sessionIdRef.current;
+
+    const sessionData = {
+      id: sessionId,
+      scenarioId: scenario.id,
+      difficulty,
+      messages: allMessages.map(({ agentAvatar: _a, ...rest }) => rest),
+      startedAt: startedAtRef.current,
+      endedAt: new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData),
+      });
+      if (!res.ok) throw new Error('Failed to save session');
+      return sessionId;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save session');
+      return null;
+    }
+  }, [displayMessages, scenario.id, difficulty]);
+
   return {
     sceneMessages,
     assistantMessages,
@@ -267,5 +301,6 @@ export function useConversation(
     sendMessage,
     startConversation,
     stopStreaming,
+    endSession,
   };
 }
