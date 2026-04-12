@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'cl-session-history';
 
@@ -21,11 +21,7 @@ function loadHistory(): SessionHistoryEntry[] {
 }
 
 export function useSessionHistory() {
-  const [history, setHistory] = useState<SessionHistoryEntry[]>([]);
-
-  useEffect(() => {
-    setHistory(loadHistory());
-  }, []);
+  const [history, setHistory] = useState<SessionHistoryEntry[]>(loadHistory);
 
   const addEntry = useCallback((entry: SessionHistoryEntry) => {
     setHistory((prev) => {
