@@ -27,6 +27,7 @@ export const chineseLearningZhCN = {
       configureProvider: '请先在设置中配置 AI 模型',
       voiceInput: '语音输入',
       endAndReview: '结束并复习',
+      pinyinToggle: '拼音提示',
     },
     scenario: {
       vocabulary: '核心词汇',
@@ -81,6 +82,7 @@ export const chineseLearningEnUS = {
       configureProvider: 'Please configure an AI model in Settings first',
       voiceInput: 'Voice input',
       endAndReview: 'End & Review',
+      pinyinToggle: 'Pinyin hints',
     },
     scenario: {
       vocabulary: 'Key Vocabulary',
