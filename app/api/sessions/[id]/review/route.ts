@@ -4,9 +4,8 @@ import { readSession, readReview, saveReview } from '@/lib/server/session-storag
 import { apiError, apiSuccess, API_ERROR_CODES } from '@/lib/server/api-response';
 import { buildReviewPrompt } from '@/lib/verticals/chinese-learning/prompts';
 import { getScenarioById } from '@/lib/verticals/chinese-learning/scenarios';
-import { getModel } from '@/lib/ai/providers';
+import { resolveModel } from '@/lib/server/resolve-model';
 import type { SessionReview, VocabularyItem } from '@/lib/verticals/chinese-learning/types';
-import type { ProviderId, ProviderType } from '@/lib/types/provider';
 
 export async function GET(
   _req: NextRequest,
@@ -57,16 +56,11 @@ export async function POST(
       providerType?: string;
     };
 
-    // Split "providerId:modelId" format (e.g. "openai:gpt-4o-mini")
-    const [providerId, ...modelParts] = (model || 'openai:gpt-4o-mini').split(':');
-    const modelId = modelParts.join(':');
-
-    const { model: resolvedModel } = getModel({
-      providerId: providerId as ProviderId,
-      modelId,
-      apiKey: apiKey || '',
+    const { model: resolvedModel } = resolveModel({
+      modelString: model,
+      apiKey,
       baseUrl,
-      providerType: providerType as ProviderType | undefined,
+      providerType,
     });
 
     const prompt = buildReviewPrompt(session.messages, targetVocabulary);
