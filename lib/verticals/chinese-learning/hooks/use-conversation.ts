@@ -5,13 +5,9 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
+import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
-
-export interface SuggestedReply {
-  text: string;
-  pinyin: string;
-}
 
 export interface ConversationMessage {
   id: string;
@@ -150,22 +146,9 @@ export function useConversation(
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
                   // Parse [SUGGESTIONS] from agent response
-                  let cleanContent = sealed.content;
-                  const match = sealed.content.match(
-                    /\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/,
-                  );
-                  if (match) {
-                    cleanContent = sealed.content
-                      .replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/, '')
-                      .trim();
-                    try {
-                      const parsed = JSON.parse(match[1]);
-                      if (Array.isArray(parsed.replies)) {
-                        setSuggestedReplies(parsed.replies.slice(0, 3));
-                      }
-                    } catch {
-                      // Invalid JSON — no suggestions
-                    }
+                  const { cleanContent, replies } = parseSuggestions(sealed.content);
+                  if (replies.length > 0) {
+                    setSuggestedReplies(replies);
                   }
 
                   rawMessagesRef.current = [
