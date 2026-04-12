@@ -5,7 +5,8 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import { generateSuggestions, type SuggestedReply } from '../suggestion-generator';
+import type { SuggestedReply } from '../suggestion-generator';
+import { generateSuggestions } from '../suggestion-generator';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -60,10 +61,52 @@ export function useConversation(
     [displayMessages, assistantAgentId],
   );
 
-  // Generate suggestions client-side based on the last agent message + scenario vocab
-  const suggestedReplies = useMemo(
+  const [llmSuggestions, setLlmSuggestions] = useState<SuggestedReply[]>([]);
+  const suggestionAbortRef = useRef<AbortController | null>(null);
+
+  // Static suggestions as instant fallback, replaced by LLM suggestions when ready
+  const staticSuggestions = useMemo(
     () => generateSuggestions(scenario, displayMessages),
     [scenario, displayMessages],
+  );
+
+  // Show LLM suggestions if available, otherwise static fallback
+  const suggestedReplies = llmSuggestions.length > 0 ? llmSuggestions : staticSuggestions;
+
+  // Fetch LLM-generated suggestions in the background (non-blocking)
+  const fetchLlmSuggestions = useCallback(
+    async (lastAgentMessage: string) => {
+      // Cancel any previous suggestion request
+      suggestionAbortRef.current?.abort();
+      const controller = new AbortController();
+      suggestionAbortRef.current = controller;
+      setLlmSuggestions([]);
+
+      try {
+        const mc = getCurrentModelConfig();
+        const res = await fetch('/api/suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastAgentMessage,
+            apiKey: mc.apiKey,
+            baseUrl: mc.baseUrl || undefined,
+            model: mc.modelString,
+            providerType: mc.providerType,
+          }),
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.replies) && data.replies.length > 0) {
+            setLlmSuggestions(data.replies.slice(0, 3));
+          }
+        }
+      } catch {
+        // Failed or aborted — keep static suggestions
+      }
+    },
+    [],
   );
 
   // Build model config once for reuse
@@ -289,6 +332,16 @@ export function useConversation(
             controller.signal,
           );
         }
+
+        // Fire LLM suggestion fetch in the background (non-blocking)
+        const lastRaw = rawMessagesRef.current[rawMessagesRef.current.length - 1];
+        if (lastRaw?.role === 'assistant') {
+          const lastText = lastRaw.parts
+            ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+            .map((p) => p.text)
+            .join('');
+          if (lastText) fetchLlmSuggestions(lastText);
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
@@ -301,7 +354,7 @@ export function useConversation(
         abortControllerRef.current = null;
       }
     },
-    [agents, assistantAgentId, scenario.setting, getModelConfig, streamRequest],
+    [agents, assistantAgentId, scenario.setting, getModelConfig, streamRequest, fetchLlmSuggestions],
   );
 
   const startConversation = useCallback(async () => {
@@ -314,6 +367,8 @@ export function useConversation(
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim()) return;
+      suggestionAbortRef.current?.abort();
+      setLlmSuggestions([]);
       const userMsgId = `user-${Date.now()}`;
 
       rawMessagesRef.current = [
