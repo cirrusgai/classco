@@ -114,6 +114,7 @@ export function useConversation(
             case 'agent_start':
               setIsThinking(false);
               currentMsgId = event.data.messageId;
+              rawContent[event.data.messageId] = '';
               setDisplayMessages((prev) => [
                 ...prev,
                 {
@@ -147,8 +148,8 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
-              // Parse [SUGGESTIONS] from raw content (not display content which is already stripped)
-              const fullText = rawContent[msgId] || '';
+              // Parse [SUGGESTIONS] from raw content — try both msgId and currentMsgId as keys
+              const fullText = rawContent[msgId] || rawContent[currentMsgId || ''] || '';
               const { cleanContent, replies } = parseSuggestions(fullText);
               if (replies.length > 0) {
                 setSuggestedReplies(replies);
