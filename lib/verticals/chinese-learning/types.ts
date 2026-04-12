@@ -25,3 +25,36 @@ export interface ScenarioTemplate {
     advanced: string;
   };
 }
+
+export interface SessionMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  agentId?: string;
+  agentName?: string;
+  agentColor?: string;
+  timestamp: number;
+}
+
+export interface SavedSession {
+  id: string;
+  scenarioId: string;
+  difficulty: Difficulty;
+  messages: SessionMessage[];
+  startedAt: string;
+  endedAt: string;
+}
+
+export interface VocabularyItem {
+  word: string;
+  pinyin: string;
+  meaning: string;
+  exampleFromChat: string;
+}
+
+export interface SessionReview {
+  sessionId: string;
+  vocabulary: VocabularyItem[];
+  summary: string;
+  generatedAt: string;
+}
