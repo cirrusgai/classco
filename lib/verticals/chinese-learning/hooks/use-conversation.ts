@@ -5,9 +5,13 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import type { SuggestedReply } from '../suggestion-generator';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
+
+export interface SuggestedReply {
+  text: string;
+  pinyin: string;
+}
 
 export interface ConversationMessage {
   id: string;
@@ -60,46 +64,7 @@ export function useConversation(
     [displayMessages, assistantAgentId],
   );
 
-  const [llmSuggestions, setLlmSuggestions] = useState<SuggestedReply[]>([]);
-  const suggestionAbortRef = useRef<AbortController | null>(null);
-
-  const suggestedReplies = llmSuggestions;
-
-  // Fetch LLM-generated suggestions in the background (non-blocking)
-  const fetchLlmSuggestions = useCallback(
-    async (lastAgentMessage: string) => {
-      // Cancel any previous suggestion request
-      suggestionAbortRef.current?.abort();
-      const controller = new AbortController();
-      suggestionAbortRef.current = controller;
-      setLlmSuggestions([]);
-
-      try {
-        const mc = getCurrentModelConfig();
-        const res = await fetch('/api/suggestions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lastAgentMessage,
-            apiKey: mc.apiKey,
-            baseUrl: mc.baseUrl || undefined,
-            model: mc.modelString,
-            providerType: mc.providerType,
-          }),
-          signal: controller.signal,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.replies) && data.replies.length > 0) {
-            setLlmSuggestions(data.replies.slice(0, 3));
-          }
-        }
-      } catch {
-        // Failed or aborted — keep static suggestions
-      }
-    },
-    [],
-  );
+  const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
 
   // Build model config once for reuse
   const getModelConfig = useCallback(() => {
@@ -116,7 +81,7 @@ export function useConversation(
 
   // Shared SSE stream reader — processes events and updates display messages
   const readStream = useCallback(
-    async (response: Response, signal: AbortSignal, onAgentEnd?: (content: string) => void) => {
+    async (response: Response, signal: AbortSignal) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
@@ -184,17 +149,40 @@ export function useConversation(
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
+                  // Parse [SUGGESTIONS] from agent response
+                  let cleanContent = sealed.content;
+                  const match = sealed.content.match(
+                    /\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/,
+                  );
+                  if (match) {
+                    cleanContent = sealed.content
+                      .replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/, '')
+                      .trim();
+                    try {
+                      const parsed = JSON.parse(match[1]);
+                      if (Array.isArray(parsed.replies)) {
+                        setSuggestedReplies(parsed.replies.slice(0, 3));
+                      }
+                    } catch {
+                      // Invalid JSON — no suggestions
+                    }
+                  }
+
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: sealed.content }],
+                      parts: [{ type: 'text' as const, text: cleanContent }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-                  // Fire suggestion fetch immediately when agent finishes
-                  onAgentEnd?.(sealed.content);
+
+                  if (cleanContent !== sealed.content) {
+                    return prev.map((m) =>
+                      m.id === msgId ? { ...m, content: cleanContent } : m,
+                    );
+                  }
                 }
                 return prev;
               });
@@ -231,7 +219,6 @@ export function useConversation(
       agentConfigs: Record<string, unknown>[],
       options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean },
       signal: AbortSignal,
-      onAgentEnd?: (content: string) => void,
     ) => {
       const mc = getModelConfig();
       const requestBody = {
@@ -273,7 +260,7 @@ export function useConversation(
         throw new Error(`API error ${response.status}: ${errText}`);
       }
 
-      await readStream(response, signal, onAgentEnd);
+      await readStream(response, signal);
     },
     [getModelConfig, readStream],
   );
@@ -299,9 +286,9 @@ export function useConversation(
       setError(null);
 
       try {
-        const msgCountBefore = rawMessagesRef.current.length;
+        setSuggestedReplies([]);
 
-        // Scene agents respond — fire LLM suggestions as soon as agent finishes speaking
+        // Scene agents respond — suggestions are parsed from [SUGGESTIONS] in agent response
         await streamRequest(
           messages,
           sceneAgentIds,
@@ -313,22 +300,7 @@ export function useConversation(
               'This is a language learning conversation. NEVER output END or USER — always dispatch an agent to respond to the learner.',
           },
           controller.signal,
-          (agentContent) => fetchLlmSuggestions(agentContent),
         );
-
-        // If director returned USER/END without generating content, force an agent to speak
-        const noNewContent = rawMessagesRef.current.length === msgCountBefore;
-        if (!isInitial && noNewContent && !controller.signal.aborted) {
-          const randomAgent = sceneAgentIds[Math.floor(Math.random() * sceneAgentIds.length)];
-          await streamRequest(
-            rawMessagesRef.current,
-            [randomAgent],
-            allConfigs,
-            { discussionTopic: scenario.setting, freshDirectorState: true },
-            controller.signal,
-            (agentContent) => fetchLlmSuggestions(agentContent),
-          );
-        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
@@ -341,7 +313,7 @@ export function useConversation(
         abortControllerRef.current = null;
       }
     },
-    [agents, assistantAgentId, scenario.setting, getModelConfig, streamRequest, fetchLlmSuggestions],
+    [agents, scenario.setting, getModelConfig, streamRequest],
   );
 
   const startConversation = useCallback(async () => {
@@ -354,8 +326,7 @@ export function useConversation(
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim()) return;
-      suggestionAbortRef.current?.abort();
-      setLlmSuggestions([]);
+      setSuggestedReplies([]);
       const userMsgId = `user-${Date.now()}`;
 
       rawMessagesRef.current = [

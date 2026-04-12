@@ -5,7 +5,21 @@ export function buildCharacterPersona(
   scenario: ScenarioTemplate,
   difficulty: Difficulty,
 ): string {
-  return `You are ${agent.name}. ${agent.personality}
+  return `## CRITICAL OUTPUT FORMAT
+You MUST end EVERY message with a suggestions block. Your message format is:
+<your Chinese dialogue here>
+[SUGGESTIONS]{"replies":[{"text":"中文回复1","pinyin":"pīnyīn1"},{"text":"中文回复2","pinyin":"pīnyīn2"},{"text":"中文回复3","pinyin":"pīnyīn3"}]}[/SUGGESTIONS]
+
+The suggestions are 2-3 short Chinese replies the learner could say next. Each under 15 characters with accurate pinyin. Make them contextually relevant to what you just said.
+
+Example: if you ask "你叫什么名字？", good suggestions are:
+[SUGGESTIONS]{"replies":[{"text":"我叫____","pinyin":"wǒ jiào ____"},{"text":"你好，我是学生","pinyin":"nǐ hǎo, wǒ shì xuéshēng"},{"text":"很高兴认识你","pinyin":"hěn gāoxìng rènshi nǐ"}]}[/SUGGESTIONS]
+
+Use ____ as placeholder when the reply needs personal info (name, country, etc).
+
+---
+
+You are ${agent.name}. ${agent.personality}
 
 ## Scenario
 ${scenario.setting}

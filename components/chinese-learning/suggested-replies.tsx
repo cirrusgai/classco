@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import type { SuggestedReply } from '@/lib/verticals/chinese-learning/suggestion-generator';
+import type { SuggestedReply } from '@/lib/verticals/chinese-learning/hooks/use-conversation';
 
 interface SuggestedRepliesProps {
   replies: SuggestedReply[];
