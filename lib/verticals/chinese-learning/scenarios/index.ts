@@ -2,11 +2,17 @@ import type { ScenarioTemplate } from '../types';
 import { selfIntroduction } from './self-introduction';
 import { restaurantOrdering } from './restaurant-ordering';
 import { takingATaxi } from './taking-a-taxi';
+import { groceryShopping } from './grocery-shopping';
+import { seeingADoctor } from './seeing-a-doctor';
+import { casualHangout } from './casual-hangout';
 
 const scenarios: ScenarioTemplate[] = [
   selfIntroduction,
   restaurantOrdering,
   takingATaxi,
+  groceryShopping,
+  seeingADoctor,
+  casualHangout,
 ];
 
 export function getAllScenarios(): ScenarioTemplate[] {
