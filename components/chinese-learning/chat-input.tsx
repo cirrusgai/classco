@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { Send, Mic, MicOff, Loader2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,20 @@ interface ChatInputProps {
   onStop: () => void;
   isStreaming: boolean;
   disabled?: boolean;
+  prefill?: string;
+  onPrefillConsumed?: () => void;
 }
 
-export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isStreaming, disabled, prefill, onPrefillConsumed }: ChatInputProps) {
   const { t } = useI18n();
   const [value, setValue] = useState('');
+
+  useEffect(() => {
+    if (prefill) {
+      setValue(prefill);
+      onPrefillConsumed?.();
+    }
+  }, [prefill, onPrefillConsumed]);
 
   const handleTranscription = useCallback(
     (text: string) => {

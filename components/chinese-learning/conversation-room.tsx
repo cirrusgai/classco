@@ -48,6 +48,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   const { addEntry } = useSessionHistory();
 
   const [showHints, setShowHints] = useState(true);
+  const [inputPrefill, setInputPrefill] = useState('');
 
   const startedRef = useRef(false);
   useEffect(() => {
@@ -129,10 +130,17 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           />
           <SuggestedReplies
               replies={suggestedReplies}
-              onSelect={handleSend}
+              onSelect={setInputPrefill}
               disabled={isStreaming}
           />
-          <ChatInput onSend={handleSend} onStop={stopStreaming} isStreaming={isStreaming} disabled={isConfigError} />
+          <ChatInput
+            onSend={handleSend}
+            onStop={stopStreaming}
+            isStreaming={isStreaming}
+            disabled={isConfigError}
+            prefill={inputPrefill}
+            onPrefillConsumed={() => setInputPrefill('')}
+          />
         </div>
         {/* Assistant panel hidden — tips replaced by inline suggestions from scene agents */}
       </div>
