@@ -84,7 +84,7 @@ export function useConversation(
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
-      const rawContent: Record<string, string> = {};
+      const fullContent: Record<string, string> = {};
 
       while (true) {
         if (signal.aborted) break;
@@ -114,7 +114,6 @@ export function useConversation(
             case 'agent_start':
               setIsThinking(false);
               currentMsgId = event.data.messageId;
-              rawContent[event.data.messageId] = '';
               setDisplayMessages((prev) => [
                 ...prev,
                 {
@@ -133,13 +132,13 @@ export function useConversation(
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
-              // Accumulate raw content (including [SUGGESTIONS] tags)
-              rawContent[targetId] = (rawContent[targetId] || '') + event.data.content;
-              // Only display content before [SUGGESTIONS tag
-              const displayText = rawContent[targetId].split('[SUGGESTIONS]')[0];
+              // Track full content (with tags) for parsing at agent_end
+              fullContent[targetId] = (fullContent[targetId] || '') + event.data.content;
+              // Display only content before [SUGGESTIONS]
+              const visible = fullContent[targetId].split('[SUGGESTIONS]')[0];
               setDisplayMessages((prev) =>
                 prev.map((m) =>
-                  m.id === targetId ? { ...m, content: displayText } : m,
+                  m.id === targetId ? { ...m, content: visible } : m,
                 ),
               );
               break;
@@ -148,9 +147,7 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
-              // Parse [SUGGESTIONS] from raw content — try both msgId and currentMsgId as keys
-              const fullText = rawContent[msgId] || rawContent[currentMsgId || ''] || '';
-              const { cleanContent, replies } = parseSuggestions(fullText);
+              const { cleanContent, replies } = parseSuggestions(fullContent[msgId] || '');
               if (replies.length > 0) {
                 setSuggestedReplies(replies);
               }

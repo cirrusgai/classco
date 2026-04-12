@@ -55,11 +55,11 @@ describe('parseSuggestions', () => {
     expect(result.replies[0]).toEqual({ text: '好的', pinyin: 'hǎo de' });
   });
 
-  it('handles tag in middle of content', () => {
+  it('handles tag in middle of content (keeps text before tag only)', () => {
     const content =
       '你好！[SUGGESTIONS]{"replies":[{"text":"你好","pinyin":"nǐ hǎo"}]}[/SUGGESTIONS]欢迎！';
     const result = parseSuggestions(content);
-    expect(result.cleanContent).toBe('你好！欢迎！');
+    expect(result.cleanContent).toBe('你好！');
     expect(result.replies).toHaveLength(1);
   });
 
@@ -78,5 +78,15 @@ describe('parseSuggestions', () => {
     const result = parseSuggestions(content);
     expect(result.cleanContent).toBe('你好！');
     expect(result.replies).toHaveLength(2);
+  });
+
+  it('handles duplicated chunks from streaming re-emit', () => {
+    // The orchestration re-emits full text chunks, causing duplicate [SUGGESTIONS] markers
+    const content =
+      '你好！你叫什么名字？[SUGGESTIONS]{"[SUGGESTIONS]{"replies":[{"text":"我叫____","pinyin":"wǒ jiào ____"},{"text":"很高兴认识你","pinyin":"hěn gāoxìng rènshi nǐ"}]}[/SUGGESTIONS]';
+    const result = parseSuggestions(content);
+    expect(result.cleanContent).toBe('你好！你叫什么名字？');
+    expect(result.replies).toHaveLength(2);
+    expect(result.replies[0].text).toBe('我叫____');
   });
 });
