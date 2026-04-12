@@ -5,7 +5,7 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
+import type { SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -61,6 +61,33 @@ export function useConversation(
   );
 
   const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
+
+  // Fetch suggestions from LLM based on last agent message
+  const fetchSuggestions = useCallback(async (lastAgentText: string) => {
+    setSuggestedReplies([]);
+    try {
+      const mc = getCurrentModelConfig();
+      const res = await fetch('/api/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lastAgentMessage: lastAgentText,
+          apiKey: mc.apiKey,
+          baseUrl: mc.baseUrl || undefined,
+          model: mc.modelString,
+          providerType: mc.providerType,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.replies) && data.replies.length > 0) {
+          setSuggestedReplies(data.replies.slice(0, 3));
+        }
+      }
+    } catch {
+      // Suggestion fetch failed — not critical
+    }
+  }, []);
 
   // Build model config once for reuse
   const getModelConfig = useCallback(() => {
@@ -145,27 +172,15 @@ export function useConversation(
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
-                  // Parse [SUGGESTIONS] from agent response
-                  const { cleanContent, replies } = parseSuggestions(sealed.content);
-                  if (replies.length > 0) {
-                    setSuggestedReplies(replies);
-                  }
-
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: cleanContent }],
+                      parts: [{ type: 'text' as const, text: sealed.content }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-
-                  if (cleanContent !== sealed.content) {
-                    return prev.map((m) =>
-                      m.id === msgId ? { ...m, content: cleanContent } : m,
-                    );
-                  }
                 }
                 return prev;
               });
@@ -271,7 +286,7 @@ export function useConversation(
       try {
         setSuggestedReplies([]);
 
-        // Scene agents respond — suggestions are parsed from [SUGGESTIONS] in agent response
+        // Scene agents respond
         await streamRequest(
           messages,
           sceneAgentIds,
@@ -284,6 +299,16 @@ export function useConversation(
           },
           controller.signal,
         );
+
+        // Fetch LLM suggestions based on what the agent just said (non-blocking)
+        const lastMsg = rawMessagesRef.current[rawMessagesRef.current.length - 1];
+        if (lastMsg?.role === 'assistant') {
+          const text = lastMsg.parts
+            ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+            .map((p) => p.text)
+            .join('');
+          if (text) fetchSuggestions(text);
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error

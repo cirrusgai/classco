@@ -7,14 +7,6 @@ export function buildCharacterPersona(
 ): string {
   return `You are ${agent.name}. ${agent.personality}
 
-## IMPORTANT: Reply Suggestions
-In EVERY response, after your Chinese dialogue, append this on a new line inside your text content:
-[SUGGESTIONS]{"replies":[{"text":"中文","pinyin":"pīnyīn"},{"text":"中文","pinyin":"pīnyīn"}]}[/SUGGESTIONS]
-
-These are 2-3 short Chinese replies (under 15 chars each) the learner could say next, with accurate pinyin. Make them contextually relevant. Use ____ for personal info placeholders.
-Example — if you ask "你叫什么名字？", append:
-[SUGGESTIONS]{"replies":[{"text":"我叫____","pinyin":"wǒ jiào ____"},{"text":"很高兴认识你","pinyin":"hěn gāoxìng rènshi nǐ"}]}[/SUGGESTIONS]
-
 ## Scenario
 ${scenario.setting}
 
