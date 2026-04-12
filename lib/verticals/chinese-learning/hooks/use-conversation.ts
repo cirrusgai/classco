@@ -148,7 +148,7 @@ export function useConversation(
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
-                  // Parse and strip [SUGGESTIONS] from assistant messages
+                  // Parse and strip [SUGGESTIONS] from agent messages (scene agents include these for beginners)
                   let cleanContent = sealed.content;
                   const suggestionsMatch = sealed.content.match(
                     /\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/,
