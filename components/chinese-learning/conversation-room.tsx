@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut, Languages, Lightbulb } from 'lucide-react';
+import { ArrowLeft, LogOut, Languages } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,6 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   const { addEntry } = useSessionHistory();
 
   const [showHints, setShowHints] = useState(true);
-  const [showSuggestions, setShowSuggestions] = useState(true);
 
   const startedRef = useRef(false);
   useEffect(() => {
@@ -103,14 +102,6 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           <Languages className="h-4 w-4" />
         </Button>
         <Button
-          variant={showSuggestions ? 'secondary' : 'ghost'}
-          size="icon"
-          onClick={() => setShowSuggestions((v) => !v)}
-          title={t('chineseLearning.room.suggestionsToggle')}
-        >
-          <Lightbulb className="h-4 w-4" />
-        </Button>
-        <Button
           variant="outline"
           size="sm"
           onClick={handleEnd}
@@ -136,13 +127,11 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
             vocabularyDict={scenario.vocabularyDict}
             showHints={showHints}
           />
-          {showSuggestions && (
-            <SuggestedReplies
+          <SuggestedReplies
               replies={suggestedReplies}
               onSelect={handleSend}
               disabled={isStreaming}
-            />
-          )}
+          />
           <ChatInput onSend={handleSend} onStop={stopStreaming} isStreaming={isStreaming} disabled={isConfigError} />
         </div>
         {/* Assistant panel hidden — tips replaced by inline suggestions from scene agents */}
