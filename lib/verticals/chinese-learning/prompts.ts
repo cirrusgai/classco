@@ -1,4 +1,4 @@
-import type { ScenarioTemplate, Difficulty, AgentTemplate } from './types';
+import type { ScenarioTemplate, Difficulty, AgentTemplate, SessionMessage } from './types';
 
 export function buildCharacterPersona(
   agent: AgentTemplate,
@@ -28,6 +28,48 @@ ${scenario.targetVocabulary.join(', ')}
 
 ## Target Grammar
 ${scenario.targetGrammar.join('\n')}`;
+}
+
+export function buildReviewPrompt(
+  messages: SessionMessage[],
+  targetVocabulary: string[],
+): string {
+  const transcript = messages
+    .map((m) => {
+      const speaker = m.role === 'user' ? 'Learner' : (m.agentName || 'Agent');
+      return `${speaker}: ${m.content}`;
+    })
+    .join('\n');
+
+  return `You are a Chinese language learning reviewer. Analyze this conversation and extract vocabulary.
+
+## Conversation Transcript
+${transcript}
+
+## Target Vocabulary for This Scenario
+${targetVocabulary.join(', ')}
+
+## Your Task
+Extract vocabulary items that appeared in the conversation. Include:
+1. Words from the target vocabulary list that appeared
+2. Any other useful Chinese words the learner encountered
+
+For each word, provide:
+- word: the Chinese word
+- pinyin: with tone marks
+- meaning: English translation
+- exampleFromChat: the exact sentence from the conversation where it appeared
+
+Also write a brief summary (2-3 sentences) of how the learner performed.
+
+## Output Format
+Respond with ONLY valid JSON, no markdown fences:
+{
+  "vocabulary": [
+    { "word": "...", "pinyin": "...", "meaning": "...", "exampleFromChat": "..." }
+  ],
+  "summary": "..."
+}`;
 }
 
 export function buildAssistantPersona(scenario: ScenarioTemplate): string {
