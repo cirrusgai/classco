@@ -12,6 +12,7 @@ import { useSessionHistory } from '@/lib/hooks/use-session-history';
 import { MessageList } from './message-list';
 import { AssistantPanel } from './assistant-panel';
 import { ChatInput } from './chat-input';
+import { SuggestedReplies } from './suggested-replies';
 import type { ScenarioTemplate, Difficulty } from '@/lib/verticals/chinese-learning/types';
 
 const DIFFICULTY_VARIANT: Record<Difficulty, 'secondary' | 'default' | 'destructive'> = {
@@ -34,6 +35,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   const {
     sceneMessages,
     assistantMessages,
+    suggestedReplies,
     isStreaming,
     isThinking,
     error,
@@ -122,6 +124,13 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
             vocabularyDict={scenario.vocabularyDict}
             showHints={showHints}
           />
+          {difficulty === 'beginner' && (
+            <SuggestedReplies
+              replies={suggestedReplies}
+              onSelect={handleSend}
+              disabled={isStreaming}
+            />
+          )}
           <ChatInput onSend={handleSend} onStop={stopStreaming} isStreaming={isStreaming} disabled={isConfigError} />
         </div>
         <div className="hidden md:block">

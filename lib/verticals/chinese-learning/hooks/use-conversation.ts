@@ -19,9 +19,15 @@ export interface ConversationMessage {
   timestamp: number;
 }
 
+export interface SuggestedReply {
+  text: string;
+  pinyin: string;
+}
+
 interface UseConversationReturn {
   sceneMessages: ConversationMessage[];
   assistantMessages: ConversationMessage[];
+  suggestedReplies: SuggestedReply[];
   isStreaming: boolean;
   isThinking: boolean;
   error: string | null;
@@ -36,6 +42,7 @@ export function useConversation(
   difficulty: Difficulty,
 ): UseConversationReturn {
   const [displayMessages, setDisplayMessages] = useState<ConversationMessage[]>([]);
+  const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,15 +148,41 @@ export function useConversation(
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
+                  // Parse and strip [SUGGESTIONS] from assistant messages
+                  let cleanContent = sealed.content;
+                  const suggestionsMatch = sealed.content.match(
+                    /\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/,
+                  );
+                  if (suggestionsMatch) {
+                    cleanContent = sealed.content
+                      .replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/, '')
+                      .trim();
+                    try {
+                      const parsed = JSON.parse(suggestionsMatch[1]);
+                      if (Array.isArray(parsed.replies)) {
+                        setSuggestedReplies(parsed.replies);
+                      }
+                    } catch {
+                      // Invalid JSON — ignore suggestions
+                    }
+                  }
+
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: sealed.content }],
+                      parts: [{ type: 'text' as const, text: cleanContent }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
+
+                  // Update displayed content to strip the suggestions tag
+                  if (cleanContent !== sealed.content) {
+                    return prev.map((m) =>
+                      m.id === msgId ? { ...m, content: cleanContent } : m,
+                    );
+                  }
                 }
                 return prev;
               });
@@ -299,6 +332,7 @@ export function useConversation(
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim()) return;
+      setSuggestedReplies([]);
       const userMsgId = `user-${Date.now()}`;
 
       rawMessagesRef.current = [
@@ -354,6 +388,7 @@ export function useConversation(
   return {
     sceneMessages,
     assistantMessages,
+    suggestedReplies,
     isStreaming,
     isThinking,
     error,
