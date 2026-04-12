@@ -1,17 +1,24 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { getAllScenarios } from '@/lib/verticals/chinese-learning/scenarios';
 import { ScenarioCard } from '@/components/chinese-learning/scenario-card';
+import { ScenarioRecommendation } from '@/components/chinese-learning/scenario-recommendation';
 import { useSessionHistory } from '@/lib/hooks/use-session-history';
 
 export default function LobbyPage() {
   const router = useRouter();
   const { t } = useI18n();
   const scenarios = getAllScenarios();
-  const { getScenarioSessions } = useSessionHistory();
+  const { getScenarioSessions, history } = useSessionHistory();
+
+  const completedIds = useMemo(
+    () => new Set(history.map((e) => e.scenarioId)),
+    [history],
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,6 +36,12 @@ export default function LobbyPage() {
             {t('chineseLearning.lobby.subtitle')}
           </p>
         </motion.div>
+
+        <ScenarioRecommendation
+          scenarios={scenarios}
+          completedScenarioIds={completedIds}
+          onSelect={(id) => router.push(`/room/${id}`)}
+        />
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {scenarios.map((scenario, i) => (
