@@ -3,12 +3,16 @@
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import type { ConversationMessage } from '@/lib/verticals/chinese-learning/hooks/use-conversation';
+import { ChineseText } from './chinese-text';
+import type { VocabEntry } from '@/lib/verticals/chinese-learning/types';
 
 interface MessageBubbleProps {
   message: ConversationMessage;
+  vocabularyDict: Record<string, VocabEntry>;
+  showHints: boolean;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, vocabularyDict, showHints }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -41,7 +45,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               : 'bg-muted rounded-bl-md',
           )}
         >
-          {message.content || <span className="animate-pulse text-muted-foreground">...</span>}
+          {message.content ? (
+            <ChineseText
+              text={message.content}
+              vocabularyDict={vocabularyDict}
+              showHints={showHints}
+            />
+          ) : (
+            <span className="animate-pulse text-muted-foreground">...</span>
+          )}
         </div>
       </div>
 

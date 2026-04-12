@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, Languages } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,8 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   } = useConversation(scenario, difficulty);
 
   const { addEntry } = useSessionHistory();
+
+  const [showHints, setShowHints] = useState(true);
 
   useEffect(() => {
     startConversation();
@@ -87,6 +89,14 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           {t(`chineseLearning.difficulty.${difficulty}`)}
         </Badge>
         <Button
+          variant={showHints ? 'secondary' : 'ghost'}
+          size="icon"
+          onClick={() => setShowHints((v) => !v)}
+          title={t('chineseLearning.room.pinyinToggle')}
+        >
+          <Languages className="h-4 w-4" />
+        </Button>
+        <Button
           variant="outline"
           size="sm"
           onClick={handleEnd}
@@ -106,7 +116,12 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <MessageList messages={sceneMessages} isThinking={isThinking} />
+          <MessageList
+            messages={sceneMessages}
+            isThinking={isThinking}
+            vocabularyDict={scenario.vocabularyDict}
+            showHints={showHints}
+          />
           <ChatInput onSend={handleSend} onStop={stopStreaming} isStreaming={isStreaming} disabled={isConfigError} />
         </div>
         <div className="hidden md:block">
