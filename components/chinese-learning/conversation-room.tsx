@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, LogOut, Languages } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -49,7 +49,10 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
 
   const [showHints, setShowHints] = useState(true);
 
+  const startedRef = useRef(false);
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     startConversation();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
