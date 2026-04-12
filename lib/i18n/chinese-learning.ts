@@ -29,6 +29,7 @@ export const chineseLearningZhCN = {
       voiceInput: '语音输入',
       endAndReview: '结束并复习',
       pinyinToggle: '拼音提示',
+      suggestionsToggle: '回复建议',
     },
     scenario: {
       vocabulary: '核心词汇',
@@ -85,6 +86,7 @@ export const chineseLearningEnUS = {
       voiceInput: 'Voice input',
       endAndReview: 'End & Review',
       pinyinToggle: 'Pinyin hints',
+      suggestionsToggle: 'Reply suggestions',
     },
     scenario: {
       vocabulary: 'Key Vocabulary',
