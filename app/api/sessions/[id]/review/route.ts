@@ -68,7 +68,6 @@ export async function POST(
     const { text } = await generateText({
       model: resolvedModel,
       prompt,
-      temperature: 0.3,
     });
 
     let parsed: { vocabulary: VocabularyItem[]; summary: string };
