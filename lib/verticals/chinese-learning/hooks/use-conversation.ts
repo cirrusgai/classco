@@ -192,7 +192,7 @@ export function useConversation(
       messages: UIMessage<ChatMessageMetadata>[],
       agentIds: string[],
       agentConfigs: Record<string, unknown>[],
-      options: { triggerAgentId?: string; discussionTopic?: string; freshDirectorState?: boolean },
+      options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean },
       signal: AbortSignal,
     ) => {
       const mc = getModelConfig();
@@ -210,6 +210,7 @@ export function useConversation(
           agentConfigs,
           sessionType: 'discussion' as const,
           discussionTopic: options.discussionTopic,
+          discussionPrompt: options.discussionPrompt,
           ...(options.triggerAgentId ? { triggerAgentId: options.triggerAgentId } : {}),
         },
         // Fresh state for independent requests (e.g. assistant) so turnCount starts at 0
@@ -260,7 +261,7 @@ export function useConversation(
       setError(null);
 
       try {
-        // Step 1: Scene agents respond (only scene agent IDs → one agent per turn)
+        // Scene agents respond (only scene agent IDs → one agent per turn)
         await streamRequest(
           messages,
           sceneAgentIds,
@@ -268,6 +269,8 @@ export function useConversation(
           {
             triggerAgentId: isInitial ? agents.triggerAgentId : undefined,
             discussionTopic: scenario.setting,
+            discussionPrompt:
+              'This is a language learning conversation. NEVER output END — always dispatch an agent to continue the dialogue. The conversation only ends when the user leaves.',
           },
           controller.signal,
         );
