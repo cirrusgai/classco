@@ -95,6 +95,7 @@ export function useConversation(
       let currentMsgId: string | null = null;
       const bufferedAgents: BufferedAgent[] = [];
       const pendingContent: Record<string, string> = {};
+      let suggestionPromise: Promise<void> | null = null;
 
       while (true) {
         if (signal.aborted) break;
@@ -168,6 +169,32 @@ export function useConversation(
                     metadata: { agentId: agent.agentId, senderName: agent.agentName, agentColor: agent.agentColor },
                   },
                 ];
+                // Start suggestion fetch NOW — runs in parallel with remaining stream events
+                if (shouldFetchSuggestions && !suggestionPromise) {
+                  const agentText = agent.rawText;
+                  const mc = getCurrentModelConfig();
+                  suggestionPromise = fetch('/api/suggestions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      lastAgentMessage: agentText,
+                      apiKey: mc.apiKey,
+                      baseUrl: mc.baseUrl || undefined,
+                      model: mc.modelString,
+                      providerType: mc.providerType,
+                    }),
+                    signal,
+                  })
+                    .then(async (res) => {
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data.replies) && data.replies.length > 0) {
+                          setSuggestedReplies(data.replies.slice(0, 3));
+                        }
+                      }
+                    })
+                    .catch(() => {});
+                }
               }
               currentMsgId = null;
               break;
@@ -191,34 +218,9 @@ export function useConversation(
       }
       reader.releaseLock();
 
-      // Get the last agent's text for suggestions
-      const lastAgent = [...bufferedAgents].reverse().find((a) => a.rawText.trim());
-
-      if (shouldFetchSuggestions && lastAgent) {
-        // Fetch suggestions BEFORE showing the messages
-        const mc = getCurrentModelConfig();
-        try {
-          const res = await fetch('/api/suggestions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lastAgentMessage: lastAgent.rawText,
-              apiKey: mc.apiKey,
-              baseUrl: mc.baseUrl || undefined,
-              model: mc.modelString,
-              providerType: mc.providerType,
-            }),
-            signal,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.replies) && data.replies.length > 0) {
-              setSuggestedReplies(data.replies.slice(0, 3));
-            }
-          }
-        } catch {
-          // Suggestions failed — still show messages
-        }
+      // Wait for suggestion fetch that started at agent_end (already running in parallel)
+      if (suggestionPromise) {
+        await suggestionPromise;
       }
 
       // Flush all buffered messages to display at once
