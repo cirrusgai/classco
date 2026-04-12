@@ -132,12 +132,20 @@ export function useConversation(
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
-              // Track full content (with tags) for parsing at agent_end
-              fullContent[targetId] = (fullContent[targetId] || '') + event.data.content;
+              const chunk = event.data.content;
+              const prev = fullContent[targetId] || '';
+              // The orchestration re-emits full text chunks for trailing partial deltas.
+              // Detect re-emit: if the new chunk starts with [SUGGESTIONS] and we already
+              // have a [SUGGESTIONS] marker, replace the suggestions portion instead of appending.
+              if (chunk.includes('[SUGGESTIONS]') && prev.includes('[SUGGESTIONS]')) {
+                fullContent[targetId] = prev.split('[SUGGESTIONS]')[0] + chunk;
+              } else {
+                fullContent[targetId] = prev + chunk;
+              }
               // Display only content before [SUGGESTIONS]
               const visible = fullContent[targetId].split('[SUGGESTIONS]')[0];
-              setDisplayMessages((prev) =>
-                prev.map((m) =>
+              setDisplayMessages((prevMsgs) =>
+                prevMsgs.map((m) =>
                   m.id === targetId ? { ...m, content: visible } : m,
                 ),
               );
