@@ -7,8 +7,8 @@ import {
 describe('chinese-learning scenarios', () => {
   const scenarios = getAllScenarios();
 
-  it('returns exactly 3 scenarios', () => {
-    expect(scenarios).toHaveLength(3);
+  it('returns exactly 10 scenarios', () => {
+    expect(scenarios).toHaveLength(10);
   });
 
   it('every scenario has required display fields', () => {

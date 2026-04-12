@@ -5,6 +5,10 @@ import { takingATaxi } from './taking-a-taxi';
 import { groceryShopping } from './grocery-shopping';
 import { seeingADoctor } from './seeing-a-doctor';
 import { casualHangout } from './casual-hangout';
+import { jobInterview } from './job-interview';
+import { rentingApartment } from './renting-apartment';
+import { banking } from './banking';
+import { phoneComplaint } from './phone-complaint';
 
 const scenarios: ScenarioTemplate[] = [
   selfIntroduction,
@@ -12,7 +16,11 @@ const scenarios: ScenarioTemplate[] = [
   takingATaxi,
   groceryShopping,
   seeingADoctor,
+  jobInterview,
   casualHangout,
+  rentingApartment,
+  banking,
+  phoneComplaint,
 ];
 
 export function getAllScenarios(): ScenarioTemplate[] {
