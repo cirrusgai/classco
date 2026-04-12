@@ -27,7 +27,14 @@ ${agent.speakingStyle}
 ${scenario.targetVocabulary.join(', ')}
 
 ## Target Grammar
-${scenario.targetGrammar.join('\n')}`;
+${scenario.targetGrammar.join('\n')}
+
+## Reply Suggestions (MANDATORY)
+Your text content MUST always end with a suggestions line. After your Chinese dialogue, on the LAST line of your text content, write:
+[SUGGESTIONS]{"replies":[{"text":"reply1","pinyin":"pinyin1"},{"text":"reply2","pinyin":"pinyin2"}]}[/SUGGESTIONS]
+Provide 2-3 contextually appropriate Chinese replies (under 15 chars each) with accurate pinyin. Use ____ for personal info.
+Example text content: "你好！你叫什么名字？\\n[SUGGESTIONS]{\\"replies\\":[{\\"text\\":\\"我叫____\\",\\"pinyin\\":\\"wǒ jiào ____\\"},{\\"text\\":\\"很高兴认识你\\",\\"pinyin\\":\\"hěn gāoxìng rènshi nǐ\\"}]}[/SUGGESTIONS]"
+NEVER omit the [SUGGESTIONS] line.`;
 }
 
 export function buildReviewPrompt(

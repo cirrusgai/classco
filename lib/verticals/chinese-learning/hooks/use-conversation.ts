@@ -5,18 +5,9 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import type { SuggestedReply } from '../parse-suggestions';
+import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
-
-interface BufferedAgent {
-  message: ConversationMessage;
-  rawId: string;
-  rawText: string;
-  agentId: string;
-  agentName?: string;
-  agentColor?: string;
-}
 
 export interface ConversationMessage {
   id: string;
@@ -84,18 +75,15 @@ export function useConversation(
     };
   }, []);
 
-  // Read SSE stream, buffer agent messages, fetch suggestions, then flush together
-  const readStreamWithSuggestions = useCallback(
-    async (response: Response, signal: AbortSignal, shouldFetchSuggestions: boolean) => {
+  // Stream SSE events — show messages in real-time, parse [SUGGESTIONS] from agent content
+  const readStream = useCallback(
+    async (response: Response, signal: AbortSignal) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
-      const bufferedAgents: BufferedAgent[] = [];
-      const pendingContent: Record<string, string> = {};
-      let suggestionPromise: Promise<void> | null = null;
 
       while (true) {
         if (signal.aborted) break;
@@ -123,10 +111,11 @@ export function useConversation(
               break;
 
             case 'agent_start':
+              setIsThinking(false);
               currentMsgId = event.data.messageId;
-              pendingContent[event.data.messageId] = '';
-              bufferedAgents.push({
-                message: {
+              setDisplayMessages((prev) => [
+                ...prev,
+                {
                   id: event.data.messageId,
                   role: 'assistant',
                   content: '',
@@ -136,66 +125,50 @@ export function useConversation(
                   agentAvatar: event.data.agentAvatar || undefined,
                   timestamp: Date.now(),
                 },
-                rawId: event.data.messageId,
-                rawText: '',
-                agentId: event.data.agentId,
-                agentName: event.data.agentName,
-                agentColor: event.data.agentColor,
-              });
+              ]);
               break;
 
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
-              pendingContent[targetId] = (pendingContent[targetId] || '') + event.data.content;
-              const agent = bufferedAgents.find((a) => a.rawId === targetId);
-              if (agent) {
-                agent.message.content = pendingContent[targetId];
-                agent.rawText = pendingContent[targetId];
-              }
+              setDisplayMessages((prev) =>
+                prev.map((m) =>
+                  m.id === targetId ? { ...m, content: m.content + event.data.content } : m,
+                ),
+              );
               break;
             }
 
             case 'agent_end': {
               const msgId = event.data.messageId;
-              const agent = bufferedAgents.find((a) => a.rawId === msgId);
-              if (agent && agent.rawText.trim()) {
-                rawMessagesRef.current = [
-                  ...rawMessagesRef.current,
-                  {
-                    id: msgId,
-                    role: 'assistant' as const,
-                    parts: [{ type: 'text' as const, text: agent.rawText }],
-                    metadata: { agentId: agent.agentId, senderName: agent.agentName, agentColor: agent.agentColor },
-                  },
-                ];
-                // Start suggestion fetch NOW — runs in parallel with remaining stream events
-                if (shouldFetchSuggestions && !suggestionPromise) {
-                  const agentText = agent.rawText;
-                  const mc = getCurrentModelConfig();
-                  suggestionPromise = fetch('/api/suggestions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      lastAgentMessage: agentText,
-                      apiKey: mc.apiKey,
-                      baseUrl: mc.baseUrl || undefined,
-                      model: mc.modelString,
-                      providerType: mc.providerType,
-                    }),
-                    signal,
-                  })
-                    .then(async (res) => {
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (Array.isArray(data.replies) && data.replies.length > 0) {
-                          setSuggestedReplies(data.replies.slice(0, 3));
-                        }
-                      }
-                    })
-                    .catch(() => {});
+              const agentId = event.data.agentId;
+              setDisplayMessages((prev) => {
+                const sealed = prev.find((m) => m.id === msgId);
+                if (sealed && sealed.content.trim()) {
+                  // Parse and strip [SUGGESTIONS] from content
+                  const { cleanContent, replies } = parseSuggestions(sealed.content);
+                  if (replies.length > 0) {
+                    setSuggestedReplies(replies);
+                  }
+
+                  rawMessagesRef.current = [
+                    ...rawMessagesRef.current,
+                    {
+                      id: msgId,
+                      role: 'assistant' as const,
+                      parts: [{ type: 'text' as const, text: cleanContent }],
+                      metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
+                    },
+                  ];
+
+                  if (cleanContent !== sealed.content) {
+                    return prev.map((m) =>
+                      m.id === msgId ? { ...m, content: cleanContent } : m,
+                    );
+                  }
                 }
-              }
+                return prev;
+              });
               currentMsgId = null;
               break;
             }
@@ -217,20 +190,6 @@ export function useConversation(
         }
       }
       reader.releaseLock();
-
-      // Wait for suggestion fetch that started at agent_end (already running in parallel)
-      if (suggestionPromise) {
-        await suggestionPromise;
-      }
-
-      // Flush all buffered messages to display at once
-      if (bufferedAgents.length > 0) {
-        setIsThinking(false);
-        setDisplayMessages((prev) => [
-          ...prev,
-          ...bufferedAgents.filter((a) => a.rawText.trim()).map((a) => a.message),
-        ]);
-      }
     },
     [],
   );
@@ -241,7 +200,7 @@ export function useConversation(
       messages: UIMessage<ChatMessageMetadata>[],
       agentIds: string[],
       agentConfigs: Record<string, unknown>[],
-      options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean; fetchSuggestions?: boolean },
+      options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean },
       signal: AbortSignal,
     ) => {
       const mc = getModelConfig();
@@ -284,9 +243,9 @@ export function useConversation(
         throw new Error(`API error ${response.status}: ${errText}`);
       }
 
-      await readStreamWithSuggestions(response, signal, options.fetchSuggestions ?? false);
+      await readStream(response, signal);
     },
-    [getModelConfig, readStreamWithSuggestions],
+    [getModelConfig, readStream],
   );
 
   // Run a full turn: scene agents respond, then assistant provides tips
@@ -322,7 +281,6 @@ export function useConversation(
             discussionTopic: scenario.setting,
             discussionPrompt:
               'This is a language learning conversation. NEVER output END or USER — always dispatch an agent to respond to the learner.',
-            fetchSuggestions: !isInitial,
           },
           controller.signal,
         );
