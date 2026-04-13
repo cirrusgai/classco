@@ -124,15 +124,6 @@ export default function ReviewPage() {
               {scenario?.name[lang] || session.scenarioId}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/room/${session.scenarioId}`)}
-            className="gap-1.5"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            {t('chineseLearning.review.tryAgain')}
-          </Button>
         </div>
       </motion.header>
 

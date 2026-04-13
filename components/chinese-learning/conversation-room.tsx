@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut, Languages } from 'lucide-react';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,6 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
 
   const { addEntry } = useSessionHistory();
 
-  const [showHints, setShowHints] = useState(true);
   const [inputPrefill, setInputPrefill] = useState('');
   const [showContext, setShowContext] = useState(true);
 
@@ -93,15 +92,6 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           {t(`chineseLearning.difficulty.${difficulty}`)}
         </Badge>
         <Button
-          variant={showHints ? 'secondary' : 'ghost'}
-          size="icon"
-          onClick={() => setShowHints((v) => !v)}
-          title={t('chineseLearning.room.pinyinToggle')}
-          aria-label={t('chineseLearning.room.pinyinToggle')}
-        >
-          <Languages className="h-4 w-4" />
-        </Button>
-        <Button
           variant="outline"
           size="sm"
           onClick={handleEnd}
@@ -139,7 +129,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
             messages={sceneMessages}
             isThinking={isThinking}
             vocabularyDict={scenario.vocabularyDict}
-            showHints={showHints}
+            showHints={true}
           />
           <SuggestedReplies
               replies={suggestedReplies}

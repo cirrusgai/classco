@@ -50,16 +50,19 @@ ${transcript}
 ${targetVocabulary.join(', ')}
 
 ## Your Task
-Extract vocabulary items that appeared in the conversation. Include:
-1. Words from the target vocabulary list that appeared
-2. Any other useful Chinese words the learner encountered
+Pick the 5-8 MOST USEFUL vocabulary words from the conversation — focus on words the learner actually used or should learn next. Prioritize:
+1. Words the learner struggled with or used incorrectly
+2. New words from agent responses that the learner hasn't seen before
+3. Key words from the target vocabulary list
+
+Do NOT list every word — only the most valuable ones for learning.
 
 For each word, provide:
 - word: the Chinese word
 - pinyin: with tone marks
 - meaning: English translation
 - exampleFromChat: the exact sentence from the conversation where it appeared
-- IMPORTANT: Use a DIFFERENT example sentence for each vocabulary word. Do NOT repeat the same sentence for multiple words.
+- IMPORTANT: Use a DIFFERENT example sentence for each vocabulary word.
 
 Also write a brief summary (2-3 sentences) of how the learner performed.
 
