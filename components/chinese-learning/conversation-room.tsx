@@ -43,6 +43,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
 
   const [showHints, setShowHints] = useState(true);
   const [inputPrefill, setInputPrefill] = useState('');
+  const [showContext, setShowContext] = useState(true);
 
   const startedRef = useRef(false);
   useEffect(() => {
@@ -52,7 +53,10 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = useCallback(
-    (content: string) => { sendMessage(content); },
+    (content: string) => {
+      setShowContext(false);
+      sendMessage(content);
+    },
     [sendMessage],
   );
 
@@ -85,7 +89,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-semibold">{scenario.name[lang]}</h1>
         </div>
-        <Badge variant={DIFFICULTY_VARIANT[difficulty]}>
+        <Badge variant={DIFFICULTY_VARIANT[difficulty]} className="hidden sm:flex">
           {t(`chineseLearning.difficulty.${difficulty}`)}
         </Badge>
         <Button
@@ -104,7 +108,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           className="gap-1.5"
         >
           <LogOut className="h-3.5 w-3.5" />
-          {t('chineseLearning.room.endAndReview')}
+          <span className="hidden sm:inline">{t('chineseLearning.room.endAndReview')}</span>
         </Button>
       </motion.header>
 
@@ -112,6 +116,20 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
         <div className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive">
           {isConfigError ? t('chineseLearning.room.configureProvider') : error}
         </div>
+      )}
+
+      {showContext && sceneMessages.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="border-b bg-muted/30 px-4 py-2.5"
+        >
+          <p className="text-xs text-muted-foreground">
+            <span className="mr-1.5">{scenario.icon}</span>
+            {t('chineseLearning.scenario.role')}: {scenario.learnerRole[lang]}
+          </p>
+        </motion.div>
       )}
 
       <div className="flex min-h-0 flex-1">

@@ -24,6 +24,7 @@ export default function ReviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState(false);
 
   useEffect(() => {
     async function loadSession() {
@@ -69,7 +70,7 @@ export default function ReviewPage() {
         setReview(data.review as SessionReview);
       }
     } catch {
-      // Review generation failed — not critical
+      setReviewError(true);
     } finally {
       setIsAnalyzing(false);
     }
@@ -147,6 +148,15 @@ export default function ReviewPage() {
               {t('chineseLearning.review.summaryTitle')}
             </h2>
             <p className="text-sm text-muted-foreground">{review.summary}</p>
+          </div>
+        )}
+
+        {reviewError && !review && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+            <p className="text-sm text-destructive">{t('chineseLearning.review.analysisFailed')}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => { setReviewError(false); generateReview(); }}>
+              {t('chineseLearning.review.retry')}
+            </Button>
           </div>
         )}
 

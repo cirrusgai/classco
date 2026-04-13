@@ -30,6 +30,7 @@ export const chineseLearningZhCN = {
       endAndReview: '结束并复习',
       pinyinToggle: '拼音提示',
       suggestionsToggle: '回复建议',
+      startingConversation: '正在开始对话...',
     },
     scenario: {
       vocabulary: '核心词汇',
@@ -51,6 +52,8 @@ export const chineseLearningZhCN = {
       example: '对话中的例句',
       summaryTitle: '学习总结',
       tryAgain: '再练一次',
+      analysisFailed: '分析失败，请重试',
+      retry: '重试',
     },
   },
 } as const;
@@ -87,6 +90,7 @@ export const chineseLearningEnUS = {
       endAndReview: 'End & Review',
       pinyinToggle: 'Pinyin hints',
       suggestionsToggle: 'Reply suggestions',
+      startingConversation: 'Starting conversation...',
     },
     scenario: {
       vocabulary: 'Key Vocabulary',
@@ -108,6 +112,8 @@ export const chineseLearningEnUS = {
       example: 'Example from Chat',
       summaryTitle: 'Session Summary',
       tryAgain: 'Try Again',
+      analysisFailed: 'Analysis failed. Please try again.',
+      retry: 'Retry',
     },
   },
 } as const;
