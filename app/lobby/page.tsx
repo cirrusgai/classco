@@ -8,6 +8,7 @@ import { getAllScenarios } from '@/lib/verticals/chinese-learning/scenarios';
 import { ScenarioCard } from '@/components/chinese-learning/scenario-card';
 import { ScenarioRecommendation } from '@/components/chinese-learning/scenario-recommendation';
 import { LanguageSelector } from '@/components/chinese-learning/language-selector';
+import { UserMenu } from '@/components/chinese-learning/user-menu';
 import { useSessionHistory } from '@/lib/hooks/use-session-history';
 
 export default function LobbyPage() {
@@ -35,6 +36,7 @@ export default function LobbyPage() {
               {t('chineseLearning.lobby.title')}
             </h1>
             <LanguageSelector />
+            <UserMenu />
           </div>
           <p className="mt-2 text-muted-foreground">
             {t('chineseLearning.lobby.subtitle')}

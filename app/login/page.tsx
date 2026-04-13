@@ -15,7 +15,7 @@ export default async function LoginPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Chinese Scenario Practice</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to start practicing
+            Sign in to save your progress across devices
           </p>
         </div>
 
@@ -58,9 +58,11 @@ export default async function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Practice real Chinese conversations with AI characters
-        </p>
+        <div className="text-center">
+          <a href="/lobby" className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+            Continue without signing in
+          </a>
+        </div>
       </div>
     </div>
   );
