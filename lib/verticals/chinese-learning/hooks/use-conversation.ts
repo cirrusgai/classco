@@ -164,6 +164,31 @@ export function useConversation(
               if (replies.length > 0) {
                 setSuggestedReplies(replies);
                 gotInlineSuggestionsRef.current = true;
+              } else {
+                // No inline suggestions — fire speculative API call NOW
+                // (runs in parallel with remaining stream events)
+                const mc = getCurrentModelConfig();
+                fetch('/api/suggestions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    lastAgentMessage: cleanContent,
+                    apiKey: mc.apiKey,
+                    baseUrl: mc.baseUrl || undefined,
+                    model: mc.modelString,
+                    providerType: mc.providerType,
+                  }),
+                  signal,
+                })
+                  .then(async (res) => {
+                    if (res.ok && !gotInlineSuggestionsRef.current) {
+                      const data = await res.json();
+                      if (Array.isArray(data.replies) && data.replies.length > 0) {
+                        setSuggestedReplies(data.replies.slice(0, 3));
+                      }
+                    }
+                  })
+                  .catch(() => {});
               }
 
               setDisplayMessages((prev) => {
@@ -302,41 +327,7 @@ export function useConversation(
           controller.signal,
         );
 
-        // Fallback: if model didn't include [SUGGESTIONS], fetch via API
-        if (!isInitial && !controller.signal.aborted && !gotInlineSuggestionsRef.current) {
-          const lastMsg = rawMessagesRef.current[rawMessagesRef.current.length - 1];
-          if (lastMsg?.role === 'assistant') {
-            const lastText = lastMsg.parts
-              ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-              .map((p) => p.text)
-              .join('');
-            if (lastText) {
-              try {
-                const mc = getCurrentModelConfig();
-                const res = await fetch('/api/suggestions', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    lastAgentMessage: lastText,
-                    apiKey: mc.apiKey,
-                    baseUrl: mc.baseUrl || undefined,
-                    model: mc.modelString,
-                    providerType: mc.providerType,
-                  }),
-                  signal: controller.signal,
-                });
-                if (res.ok) {
-                  const data = await res.json();
-                  if (Array.isArray(data.replies) && data.replies.length > 0) {
-                    setSuggestedReplies(data.replies.slice(0, 3));
-                  }
-                }
-              } catch {
-                // Fallback failed — no suggestions
-              }
-            }
-          }
-        }
+        // Fallback API call already fired speculatively from agent_end if needed
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
