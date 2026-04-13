@@ -18,13 +18,8 @@ export async function POST(req: NextRequest) {
       return apiError(API_ERROR_CODES.MISSING_REQUIRED_FIELD, 400, 'Missing lastAgentMessage');
     }
 
-    // Use a fast, small model for suggestions — the prompt is trivial
-    // Prefer moonshot-v1-8k (fast) over kimi-k2.5 (slow) when using Kimi provider
-    const suggestionsModel = model?.startsWith('kimi:')
-      ? model.replace(/kimi:.*/, 'kimi:moonshot-v1-8k')
-      : model;
     const { model: resolvedModel } = resolveModel({
-      modelString: suggestionsModel,
+      modelString: model,
       apiKey,
       baseUrl,
       providerType,
