@@ -4,6 +4,7 @@ export function buildCharacterPersona(
   agent: AgentTemplate,
   scenario: ScenarioTemplate,
   difficulty: Difficulty,
+  learnerLanguage: string = 'English',
 ): string {
   return `You are ${agent.name}. ${agent.personality}
 
@@ -12,7 +13,7 @@ ${scenario.setting}
 
 ## The Learner
 Role: ${scenario.learnerRole.en}
-The learner is an English speaker learning Chinese.
+The learner speaks ${learnerLanguage} and is learning Chinese.
 
 ## Speaking Style
 ${agent.speakingStyle}
@@ -33,6 +34,7 @@ ${scenario.targetGrammar.join('\n')}`;
 export function buildReviewPrompt(
   messages: SessionMessage[],
   targetVocabulary: string[],
+  learnerLanguage: string = 'English',
 ): string {
   const transcript = messages
     .map((m) => {
@@ -65,6 +67,7 @@ For each word, provide:
 - IMPORTANT: Use a DIFFERENT example sentence for each vocabulary word.
 
 Also write a brief summary (2-3 sentences) of how the learner performed.
+Write the summary and all vocabulary meanings in ${learnerLanguage}.
 
 ## Output Format
 Respond with ONLY valid JSON, no markdown fences:
@@ -76,7 +79,7 @@ Respond with ONLY valid JSON, no markdown fences:
 }`;
 }
 
-export function buildAssistantPersona(scenario: ScenarioTemplate): string {
+export function buildAssistantPersona(scenario: ScenarioTemplate, learnerLanguage: string = 'English'): string {
   return `You are a Chinese learning assistant observing a conversation.
 You do NOT participate in the scene dialogue.
 You provide brief learning tips to help the student.
@@ -89,7 +92,7 @@ You provide brief learning tips to help the student.
 
 ## Rules
 - Keep tips to 1-2 sentences MAX
-- Write tips in ENGLISH (the learner's native language)
+- Write tips in ${learnerLanguage} (the learner's native language)
 - Include Chinese text with pinyin in parentheses where relevant
 - Be encouraging, not critical
 - Only speak when you have something useful to say

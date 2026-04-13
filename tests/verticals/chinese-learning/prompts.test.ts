@@ -54,8 +54,13 @@ describe('buildAssistantPersona', () => {
     expect(persona).toContain(scenario.targetGrammar[0]);
   });
 
-  it('instructs tips in English', () => {
+  it('instructs tips in learner language', () => {
     const persona = buildAssistantPersona(scenario);
-    expect(persona).toContain('ENGLISH');
+    expect(persona).toContain('English');
+  });
+
+  it('uses provided learnerLanguage in tips instruction', () => {
+    const persona = buildAssistantPersona(scenario, 'French');
+    expect(persona).toContain('French');
   });
 });

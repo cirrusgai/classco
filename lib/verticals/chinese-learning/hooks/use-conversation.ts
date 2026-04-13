@@ -47,13 +47,21 @@ export function useConversation(
   const sessionIdRef = useRef<string>(`session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const startedAtRef = useRef<string>(new Date().toISOString());
   const displayMessagesRef = useRef<ConversationMessage[]>([]);
+  const learnerLanguageRef = useRef<string>('English');
+
+  const learnerLanguage = useUserProfileStore((s) => s.learnerLanguage) || 'English';
 
   // Keep ref in sync for endSession to read latest messages without stale closure
   useEffect(() => {
     displayMessagesRef.current = displayMessages;
   }, [displayMessages]);
 
-  const agents = useMemo(() => scenarioToAgents(scenario, difficulty), [scenario, difficulty]);
+  // Keep learnerLanguage ref in sync so readStream (empty-dep useCallback) can access latest value
+  useEffect(() => {
+    learnerLanguageRef.current = learnerLanguage;
+  }, [learnerLanguage]);
+
+  const agents = useMemo(() => scenarioToAgents(scenario, difficulty, learnerLanguage), [scenario, difficulty, learnerLanguage]);
   const assistantAgentId = agents.assistantAgent.id;
 
   const sceneMessages = useMemo(
@@ -174,6 +182,7 @@ export function useConversation(
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     lastAgentMessage: sealedContent,
+                    learnerLanguage: learnerLanguageRef.current,
                     apiKey: mc.apiKey,
                     baseUrl: mc.baseUrl || undefined,
                     model: mc.modelString,

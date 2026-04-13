@@ -16,6 +16,7 @@ export interface ConversationAgents {
 export function scenarioToAgents(
   scenario: ScenarioTemplate,
   difficulty: Difficulty,
+  learnerLanguage: string = 'English',
 ): ConversationAgents {
   const now = new Date();
 
@@ -23,7 +24,7 @@ export function scenarioToAgents(
     id: `cl-${scenario.id}-${index}`,
     name: agent.name,
     role: agent.role,
-    persona: buildCharacterPersona(agent, scenario, difficulty),
+    persona: buildCharacterPersona(agent, scenario, difficulty, learnerLanguage),
     avatar: scenario.icon,
     color: AGENT_COLORS[index % AGENT_COLORS.length],
     allowedActions: [],
@@ -38,7 +39,7 @@ export function scenarioToAgents(
     id: `cl-${scenario.id}-assistant`,
     name: 'Learning Assistant',
     role: 'learning assistant',
-    persona: buildAssistantPersona(scenario),
+    persona: buildAssistantPersona(scenario, learnerLanguage),
     avatar: '📖',
     color: ASSISTANT_COLOR,
     allowedActions: [],
