@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
@@ -47,6 +47,12 @@ export function useConversation(
   const abortControllerRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>(`session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const startedAtRef = useRef<string>(new Date().toISOString());
+  const displayMessagesRef = useRef<ConversationMessage[]>([]);
+
+  // Keep ref in sync for endSession to read latest messages without stale closure
+  useEffect(() => {
+    displayMessagesRef.current = displayMessages;
+  }, [displayMessages]);
 
   const agents = useMemo(() => scenarioToAgents(scenario, difficulty), [scenario, difficulty]);
   const assistantAgentId = agents.assistantAgent.id;
@@ -142,9 +148,12 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
+              let sealedContent = '';
+
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed && sealed.content.trim()) {
+                  sealedContent = sealed.content;
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
@@ -154,32 +163,36 @@ export function useConversation(
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-                  // Fire suggestion API from inside updater (has access to sealed.content)
-                  const mc = getCurrentModelConfig();
-                  fetch('/api/suggestions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      lastAgentMessage: sealed.content,
-                      apiKey: mc.apiKey,
-                      baseUrl: mc.baseUrl || undefined,
-                      model: mc.modelString,
-                      providerType: mc.providerType,
-                    }),
-                    signal,
-                  })
-                    .then(async (res) => {
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (Array.isArray(data.replies) && data.replies.length > 0) {
-                          setSuggestedReplies(data.replies.slice(0, 3));
-                        }
-                      }
-                    })
-                    .catch(() => {});
                 }
                 return prev;
               });
+
+              // Fire suggestion API OUTSIDE the state updater — updaters must be pure
+              if (sealedContent) {
+                const mc = getCurrentModelConfig();
+                fetch('/api/suggestions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    lastAgentMessage: sealedContent,
+                    apiKey: mc.apiKey,
+                    baseUrl: mc.baseUrl || undefined,
+                    model: mc.modelString,
+                    providerType: mc.providerType,
+                  }),
+                  signal,
+                })
+                  .then(async (res) => {
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (Array.isArray(data.replies) && data.replies.length > 0) {
+                        setSuggestedReplies(data.replies.slice(0, 3));
+                      }
+                    }
+                  })
+                  .catch(() => {});
+              }
+
               currentMsgId = null;
               break;
             }
@@ -346,7 +359,7 @@ export function useConversation(
   const endSession = useCallback(async (): Promise<string | null> => {
     abortControllerRef.current?.abort();
 
-    const allMessages = displayMessages;
+    const allMessages = displayMessagesRef.current;
     if (allMessages.length === 0) return null;
 
     const sessionId = sessionIdRef.current;
@@ -372,7 +385,7 @@ export function useConversation(
       setError(err instanceof Error ? err.message : 'Failed to save session');
       return null;
     }
-  }, [displayMessages, scenario.id, difficulty]);
+  }, [scenario.id, difficulty]);
 
   return {
     sceneMessages,
