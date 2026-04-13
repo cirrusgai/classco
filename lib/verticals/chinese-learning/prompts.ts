@@ -59,6 +59,7 @@ For each word, provide:
 - pinyin: with tone marks
 - meaning: English translation
 - exampleFromChat: the exact sentence from the conversation where it appeared
+- IMPORTANT: Use a DIFFERENT example sentence for each vocabulary word. Do NOT repeat the same sentence for multiple words.
 
 Also write a brief summary (2-3 sentences) of how the learner performed.
 

@@ -7,6 +7,7 @@ export const chineseLearningZhCN = {
       recommendedTitle: '推荐下一个场景',
       completedOnce: '已完成 1 次',
       completedTimes: '已完成 {count} 次',
+      scenariosAvailable: '个场景可选',
     },
     difficulty: {
       beginner: '入门',
@@ -30,6 +31,7 @@ export const chineseLearningZhCN = {
       endAndReview: '结束并复习',
       pinyinToggle: '拼音提示',
       suggestionsToggle: '回复建议',
+      suggestedRepliesLabel: '建议回复',
       startingConversation: '正在开始对话...',
     },
     scenario: {
@@ -67,6 +69,7 @@ export const chineseLearningEnUS = {
       recommendedTitle: 'Recommended Next',
       completedOnce: 'Completed once',
       completedTimes: 'Completed {count} times',
+      scenariosAvailable: 'scenarios available',
     },
     difficulty: {
       beginner: 'Beginner',
@@ -90,6 +93,7 @@ export const chineseLearningEnUS = {
       endAndReview: 'End & Review',
       pinyinToggle: 'Pinyin hints',
       suggestionsToggle: 'Reply suggestions',
+      suggestedRepliesLabel: 'Suggested replies',
       startingConversation: 'Starting conversation...',
     },
     scenario: {

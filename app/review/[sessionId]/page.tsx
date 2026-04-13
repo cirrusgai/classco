@@ -167,7 +167,11 @@ export default function ReviewPage() {
 
         <ReviewTranscript messages={session.messages} />
 
-        <div className="flex justify-center pb-8">
+        <div className="flex justify-center gap-3 pb-8">
+          <Button variant="outline" onClick={() => router.push(`/room/${session.scenarioId}`)}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            {t('chineseLearning.review.tryAgain')}
+          </Button>
           <Button onClick={() => router.push('/lobby')}>
             {t('chineseLearning.room.backToLobby')}
           </Button>

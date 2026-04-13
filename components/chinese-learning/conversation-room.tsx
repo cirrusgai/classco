@@ -82,7 +82,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
         transition={{ duration: 0.3 }}
         className="flex items-center gap-3 border-b px-4 py-2.5"
       >
-        <Button variant="ghost" size="icon" onClick={onBack}>
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label={t('chineseLearning.room.backToLobby')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <span className="text-xl">{scenario.icon}</span>
@@ -97,6 +97,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           size="icon"
           onClick={() => setShowHints((v) => !v)}
           title={t('chineseLearning.room.pinyinToggle')}
+          aria-label={t('chineseLearning.room.pinyinToggle')}
         >
           <Languages className="h-4 w-4" />
         </Button>

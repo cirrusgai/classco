@@ -33,7 +33,18 @@ export function ScenarioCard({ scenario, index, onSelect, completedCount = 0 }: 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.35, ease: 'easeOut' }}
     >
-      <Card className="h-full cursor-pointer transition-shadow hover:shadow-lg" onClick={() => onSelect(scenario.id)}>
+      <Card
+        className="h-full cursor-pointer transition-shadow hover:shadow-lg"
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(scenario.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect(scenario.id);
+          }
+        }}
+      >
         <CardHeader>
           <div className="flex items-center gap-3">
             <span className="text-3xl">{scenario.icon}</span>

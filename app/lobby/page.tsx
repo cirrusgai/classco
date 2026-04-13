@@ -54,6 +54,9 @@ export default function LobbyPage() {
             />
           ))}
         </div>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          {scenarios.length} {t('chineseLearning.lobby.scenariosAvailable')}
+        </p>
       </div>
     </div>
   );

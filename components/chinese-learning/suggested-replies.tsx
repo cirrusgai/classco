@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
+import { useI18n } from '@/lib/hooks/use-i18n';
 import type { SuggestedReply } from '@/lib/verticals/chinese-learning/types';
 
 interface SuggestedRepliesProps {
@@ -10,10 +11,15 @@ interface SuggestedRepliesProps {
 }
 
 export function SuggestedReplies({ replies, onSelect, disabled }: SuggestedRepliesProps) {
+  const { t } = useI18n();
+
   if (replies.length === 0) return null;
 
   return (
     <div className="border-t bg-muted/20 px-4 py-2">
+      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {t('chineseLearning.room.suggestedRepliesLabel')}
+      </p>
       <div className="flex flex-wrap gap-2">
         <AnimatePresence>
           {replies.map((reply, i) => (
