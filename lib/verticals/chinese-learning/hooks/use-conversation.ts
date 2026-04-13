@@ -5,7 +5,7 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import type { SuggestedReply } from '../parse-suggestions';
+import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -84,7 +84,6 @@ export function useConversation(
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
-      let lastAgentText = '';
       const lastAgentRaw: Record<string, string> = {};
 
       while (true) {
@@ -115,7 +114,6 @@ export function useConversation(
             case 'agent_start':
               setIsThinking(false);
               currentMsgId = event.data.messageId;
-              lastAgentText = '';
               setDisplayMessages((prev) => [
                 ...prev,
                 {
@@ -156,57 +154,31 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
-              // Extract text synchronously via state updater, then fire suggestion API
-              // Get clean text from our raw tracking (handles re-emits correctly)
+              // Parse suggestions from raw content (one LLM call, zero delay)
               const rawText = lastAgentRaw[msgId] || '';
-              const cleanText = rawText.split('[SUGGESTIONS')[0].trim();
+              const { cleanContent, replies } = parseSuggestions(rawText);
+              if (replies.length > 0) {
+                setSuggestedReplies(replies);
+              }
 
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
                 if (sealed) {
-                  lastAgentText = cleanText;
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: cleanText }],
+                      parts: [{ type: 'text' as const, text: cleanContent }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-                  // Ensure display is clean
                   return prev.map((m) =>
-                    m.id === msgId ? { ...m, content: cleanText } : m,
+                    m.id === msgId ? { ...m, content: cleanContent } : m,
                   );
                 }
                 return prev;
               });
-
-              // Fire suggestion API (non-blocking)
-              if (cleanText) {
-                const mc = getCurrentModelConfig();
-                fetch('/api/suggestions', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    lastAgentMessage: cleanText,
-                    apiKey: mc.apiKey,
-                    baseUrl: mc.baseUrl || undefined,
-                    model: mc.modelString,
-                    providerType: mc.providerType,
-                  }),
-                  signal,
-                })
-                  .then(async (res) => {
-                    if (res.ok) {
-                      const data = await res.json();
-                      if (Array.isArray(data.replies) && data.replies.length > 0) {
-                        setSuggestedReplies(data.replies.slice(0, 3));
-                      }
-                    }
-                  })
-                  .catch(() => {});
-              }
               currentMsgId = null;
               break;
             }
