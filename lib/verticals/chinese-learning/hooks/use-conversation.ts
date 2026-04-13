@@ -5,7 +5,7 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
+import type { SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -61,7 +61,6 @@ export function useConversation(
   );
 
   const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
-  const gotInlineSuggestionsRef = useRef(false);
 
   // Build model config once for reuse
   const getModelConfig = useCallback(() => {
@@ -76,7 +75,7 @@ export function useConversation(
     };
   }, []);
 
-  // Stream SSE events — show messages in real-time, parse [SUGGESTIONS] from agent content
+  // Stream SSE events to display, fire suggestion API at agent_end
   const readStream = useCallback(
     async (response: Response, signal: AbortSignal) => {
       const reader = response.body?.getReader();
@@ -85,7 +84,7 @@ export function useConversation(
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
-      const fullContent: Record<string, string> = {};
+      let lastAgentText = '';
 
       while (true) {
         if (signal.aborted) break;
@@ -115,6 +114,7 @@ export function useConversation(
             case 'agent_start':
               setIsThinking(false);
               currentMsgId = event.data.messageId;
+              lastAgentText = '';
               setDisplayMessages((prev) => [
                 ...prev,
                 {
@@ -133,26 +133,13 @@ export function useConversation(
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
-              const chunk = event.data.content;
-              const prev = fullContent[targetId] || '';
-              // The orchestration has two emit modes:
-              // 1. Incremental deltas (few chars) — append
-              // 2. Full chunk re-emits (trailing partials) — the chunk contains
-              //    all previous text plus new text, so use it as replacement.
-              // Detect mode 2: prev content is a prefix of the new chunk.
-              if (prev.length > 0 && chunk.length > prev.length && chunk.startsWith(prev)) {
-                fullContent[targetId] = chunk;
-              } else if (prev.length > 0 && chunk.includes('[SUGGESTIONS') && prev.includes('[SUGGESTIONS')) {
-                fullContent[targetId] = prev.split('[SUGGESTIONS')[0] + chunk;
-              } else {
-                fullContent[targetId] = prev + chunk;
-              }
-              // Display only content before [SUGGESTIONS marker
-              const visible = fullContent[targetId].split('[SUGGESTIONS')[0];
-              setDisplayMessages((prevMsgs) =>
-                prevMsgs.map((m) =>
-                  m.id === targetId ? { ...m, content: visible } : m,
-                ),
+              setDisplayMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== targetId) return m;
+                  // Append delta, hide [SUGGESTIONS from display
+                  const updated = m.content + event.data.content;
+                  return { ...m, content: updated.split('[SUGGESTIONS')[0] };
+                }),
               );
               break;
             }
@@ -160,53 +147,43 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
-              const { cleanContent, replies } = parseSuggestions(fullContent[msgId] || '');
-              if (replies.length > 0) {
-                setSuggestedReplies(replies);
-                gotInlineSuggestionsRef.current = true;
-              } else {
-                // No inline suggestions — fire speculative API call NOW
-                // (runs in parallel with remaining stream events)
-                const mc = getCurrentModelConfig();
-                fetch('/api/suggestions', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    lastAgentMessage: cleanContent,
-                    apiKey: mc.apiKey,
-                    baseUrl: mc.baseUrl || undefined,
-                    model: mc.modelString,
-                    providerType: mc.providerType,
-                  }),
-                  signal,
-                })
-                  .then(async (res) => {
-                    if (res.ok && !gotInlineSuggestionsRef.current) {
-                      const data = await res.json();
-                      if (Array.isArray(data.replies) && data.replies.length > 0) {
-                        setSuggestedReplies(data.replies.slice(0, 3));
-                      }
-                    }
-                  })
-                  .catch(() => {});
-              }
-
+              // Extract text synchronously via state updater, then fire suggestion API
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
-                if (sealed) {
+                if (sealed && sealed.content.trim()) {
+                  lastAgentText = sealed.content;
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: cleanContent }],
+                      parts: [{ type: 'text' as const, text: sealed.content }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-                  // Ensure display shows clean content
-                  return prev.map((m) =>
-                    m.id === msgId ? { ...m, content: cleanContent } : m,
-                  );
+                  // Fire suggestion API from inside updater where we have the text
+                  const mc = getCurrentModelConfig();
+                  fetch('/api/suggestions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      lastAgentMessage: sealed.content,
+                      apiKey: mc.apiKey,
+                      baseUrl: mc.baseUrl || undefined,
+                      model: mc.modelString,
+                      providerType: mc.providerType,
+                    }),
+                    signal,
+                  })
+                    .then(async (res) => {
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data.replies) && data.replies.length > 0) {
+                          setSuggestedReplies(data.replies.slice(0, 3));
+                        }
+                      }
+                    })
+                    .catch(() => {});
                 }
                 return prev;
               });
@@ -311,7 +288,6 @@ export function useConversation(
 
       try {
         setSuggestedReplies([]);
-        gotInlineSuggestionsRef.current = false;
 
         // Scene agents respond — suggestions parsed from [SUGGESTIONS] inline if present
         await streamRequest(
@@ -327,7 +303,6 @@ export function useConversation(
           controller.signal,
         );
 
-        // Fallback API call already fired speculatively from agent_end if needed
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled — not an error
