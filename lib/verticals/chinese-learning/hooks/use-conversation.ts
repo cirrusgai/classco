@@ -6,6 +6,7 @@ import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/t
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
 import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
+import { stripSuggestionsTag } from '../strip-suggestions-tag';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -141,8 +142,8 @@ export function useConversation(
               } else {
                 lastAgentRaw[targetId] = prevRaw + chunk;
               }
-              // Display only content before [SUGGESTIONS
-              const visible = lastAgentRaw[targetId].split('[SUGGESTIONS')[0];
+              // Display only content before [SUGGESTIONS (handles partial tag during streaming)
+              const visible = stripSuggestionsTag(lastAgentRaw[targetId]);
               setDisplayMessages((prev) =>
                 prev.map((m) =>
                   m.id === targetId ? { ...m, content: visible } : m,
