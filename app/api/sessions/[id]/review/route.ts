@@ -72,10 +72,17 @@ export async function POST(
 
     let parsed: { vocabulary: VocabularyItem[]; summary: string };
     try {
-      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+      // Strip markdown fences, leading/trailing text outside JSON
+      let cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+      // Find the JSON object — look for first { and last }
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+      }
       parsed = JSON.parse(cleaned) as { vocabulary: VocabularyItem[]; summary: string };
     } catch {
-      parsed = { vocabulary: [], summary: text.slice(0, 200) };
+      parsed = { vocabulary: [], summary: 'Review generation failed. Please try again.' };
     }
 
     const review: SessionReview = {
