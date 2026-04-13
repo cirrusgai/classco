@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/hooks/use-i18n';
 import { getAllScenarios } from '@/lib/verticals/chinese-learning/scenarios';
 import { ScenarioCard } from '@/components/chinese-learning/scenario-card';
 import { ScenarioRecommendation } from '@/components/chinese-learning/scenario-recommendation';
+import { LanguageSelector } from '@/components/chinese-learning/language-selector';
 import { useSessionHistory } from '@/lib/hooks/use-session-history';
 
 export default function LobbyPage() {
@@ -29,9 +30,12 @@ export default function LobbyPage() {
           transition={{ duration: 0.5, ease: 'easeOut' }}
           className="mb-10 text-center"
         >
-          <h1 className="text-3xl font-bold tracking-tight">
-            {t('chineseLearning.lobby.title')}
-          </h1>
+          <div className="flex items-center justify-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {t('chineseLearning.lobby.title')}
+            </h1>
+            <LanguageSelector />
+          </div>
           <p className="mt-2 text-muted-foreground">
             {t('chineseLearning.lobby.subtitle')}
           </p>
