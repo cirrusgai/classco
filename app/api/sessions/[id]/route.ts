@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { readSession } from '@/lib/server/session-storage';
+import { readSession, isValidSessionId } from '@/lib/server/session-storage';
 import { apiError, apiSuccess, API_ERROR_CODES } from '@/lib/server/api-response';
 
 export async function GET(
@@ -7,6 +7,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  if (!isValidSessionId(id)) {
+    return apiError(API_ERROR_CODES.INVALID_REQUEST, 400, 'Invalid session ID format');
+  }
 
   try {
     const session = await readSession(id);

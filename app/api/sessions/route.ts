@@ -1,11 +1,15 @@
 import { NextRequest } from 'next/server';
-import { saveSession, listSessionsByScenario } from '@/lib/server/session-storage';
+import { saveSession, listSessionsByScenario, isValidSessionId } from '@/lib/server/session-storage';
 import { apiError, apiSuccess, API_ERROR_CODES } from '@/lib/server/api-response';
 import type { SavedSession } from '@/lib/verticals/chinese-learning/types';
 
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SavedSession;
+
+    if (!isValidSessionId(body.id)) {
+      return apiError(API_ERROR_CODES.INVALID_REQUEST, 400, 'Invalid session ID format');
+    }
 
     if (!body.id || !body.scenarioId || !body.messages) {
       return apiError(

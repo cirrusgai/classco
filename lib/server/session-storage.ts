@@ -5,6 +5,12 @@ import type { SavedSession, SessionReview } from '@/lib/verticals/chinese-learni
 
 export const SESSIONS_DIR = path.join(process.cwd(), 'data', 'sessions');
 
+const SESSION_ID_PATTERN = /^session-\d+-[a-z0-9]+$/;
+
+export function isValidSessionId(id: string): boolean {
+  return SESSION_ID_PATTERN.test(id);
+}
+
 async function ensureSessionsDir() {
   await fs.mkdir(SESSIONS_DIR, { recursive: true });
 }

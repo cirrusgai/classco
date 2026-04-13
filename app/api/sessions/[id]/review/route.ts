@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { generateText } from 'ai';
-import { readSession, readReview, saveReview } from '@/lib/server/session-storage';
+import { readSession, readReview, saveReview, isValidSessionId } from '@/lib/server/session-storage';
 import { apiError, apiSuccess, API_ERROR_CODES } from '@/lib/server/api-response';
 import { buildReviewPrompt } from '@/lib/verticals/chinese-learning/prompts';
 import { getScenarioById } from '@/lib/verticals/chinese-learning/scenarios';
@@ -12,6 +12,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  if (!isValidSessionId(id)) {
+    return apiError(API_ERROR_CODES.INVALID_REQUEST, 400, 'Invalid session ID format');
+  }
 
   try {
     const existing = await readReview(id);
@@ -33,6 +37,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  if (!isValidSessionId(id)) {
+    return apiError(API_ERROR_CODES.INVALID_REQUEST, 400, 'Invalid session ID format');
+  }
 
   try {
     const existing = await readReview(id);
