@@ -28,6 +28,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // API routes return 401 instead of redirect
+  if (!isLoggedIn && pathname.startsWith('/api/')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   // Redirect unauthenticated users to login
   if (!isLoggedIn) {
     const loginUrl = new URL('/login', req.nextUrl.origin);
