@@ -12,14 +12,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/hooks/use-i18n';
-import type { ScenarioTemplate, Difficulty } from '@/lib/verticals/chinese-learning/types';
+import type { ScenarioTemplate } from '@/lib/verticals/chinese-learning/types';
+import { DIFFICULTY_VARIANT } from '@/lib/verticals/chinese-learning/constants';
 import { SessionBadge } from './session-badge';
-
-const DIFFICULTY_VARIANT: Record<Difficulty, 'secondary' | 'default' | 'destructive'> = {
-  beginner: 'secondary',
-  intermediate: 'default',
-  advanced: 'destructive',
-};
 
 interface ScenarioCardProps {
   scenario: ScenarioTemplate;

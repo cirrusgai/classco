@@ -3,9 +3,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
-import type { ScenarioTemplate, Difficulty } from '../types';
+import type { ScenarioTemplate, Difficulty, SuggestedReply } from '../types';
 import { scenarioToAgents } from '../agents';
-import type { SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 

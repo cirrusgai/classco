@@ -10,16 +10,10 @@ import { useI18n } from '@/lib/hooks/use-i18n';
 import { useConversation } from '@/lib/verticals/chinese-learning/hooks/use-conversation';
 import { useSessionHistory } from '@/lib/hooks/use-session-history';
 import { MessageList } from './message-list';
-import { AssistantPanel } from './assistant-panel';
 import { ChatInput } from './chat-input';
 import { SuggestedReplies } from './suggested-replies';
 import type { ScenarioTemplate, Difficulty } from '@/lib/verticals/chinese-learning/types';
-
-const DIFFICULTY_VARIANT: Record<Difficulty, 'secondary' | 'default' | 'destructive'> = {
-  beginner: 'secondary',
-  intermediate: 'default',
-  advanced: 'destructive',
-};
+import { DIFFICULTY_VARIANT } from '@/lib/verticals/chinese-learning/constants';
 
 interface ConversationRoomProps {
   scenario: ScenarioTemplate;

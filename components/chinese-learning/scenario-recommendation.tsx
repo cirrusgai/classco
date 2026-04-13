@@ -7,13 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import type { ScenarioTemplate, Difficulty } from '@/lib/verticals/chinese-learning/types';
+import { DIFFICULTY_VARIANT } from '@/lib/verticals/chinese-learning/constants';
 
 const DIFFICULTY_ORDER: Difficulty[] = ['beginner', 'intermediate', 'advanced'];
-const DIFFICULTY_VARIANT: Record<Difficulty, 'secondary' | 'default' | 'destructive'> = {
-  beginner: 'secondary',
-  intermediate: 'default',
-  advanced: 'destructive',
-};
 
 interface ScenarioRecommendationProps {
   scenarios: ScenarioTemplate[];

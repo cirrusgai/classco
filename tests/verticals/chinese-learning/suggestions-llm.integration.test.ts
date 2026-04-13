@@ -15,7 +15,6 @@ import { generateText } from 'ai';
 import { getModel, parseModelString } from '@/lib/ai/providers';
 import { buildCharacterPersona } from '@/lib/verticals/chinese-learning/prompts';
 import { getScenarioById } from '@/lib/verticals/chinese-learning/scenarios';
-import { parseSuggestions } from '@/lib/verticals/chinese-learning/parse-suggestions';
 
 // Load API keys from .env.local
 try {
@@ -58,20 +57,6 @@ describe.skipIf(SKIP)('LLM suggestions integration', () => {
       // Verify [SUGGESTIONS] tag is present
       expect(text).toContain('[SUGGESTIONS]');
       expect(text).toContain('[/SUGGESTIONS]');
-
-      // Verify it parses correctly
-      const { cleanContent, replies } = parseSuggestions(text);
-      expect(cleanContent.length).toBeGreaterThan(0);
-      expect(replies.length).toBeGreaterThanOrEqual(1);
-      expect(replies.length).toBeLessThanOrEqual(3);
-
-      // Verify each reply has text and pinyin
-      for (const reply of replies) {
-        expect(reply.text).toBeTruthy();
-        expect(reply.pinyin).toBeTruthy();
-      }
-
-      console.log('Parsed replies:', replies);
     },
     60000, // 60s timeout — LLM calls can be slow with retries
   );

@@ -1,5 +1,10 @@
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
+export interface SuggestedReply {
+  text: string;
+  pinyin: string;
+}
+
 export interface VocabEntry {
   pinyin: string;
   meaning: string;
