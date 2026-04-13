@@ -24,6 +24,23 @@ export function MessageList({ messages, isThinking, vocabularyDict, showHints }:
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, messages[messages.length - 1]?.content, isThinking]);
 
+  if (messages.length === 0 && isThinking) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="mt-3 text-sm text-muted-foreground">
+            {t('chineseLearning.room.startingConversation')}
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <ScrollArea className="flex-1">
       <div className="space-y-4 p-4">
@@ -35,7 +52,7 @@ export function MessageList({ messages, isThinking, vocabularyDict, showHints }:
               showHints={showHints}
             />
         ))}
-        {isThinking && (
+        {isThinking && messages.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
