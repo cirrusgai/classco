@@ -5,8 +5,7 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty } from '../types';
 import { scenarioToAgents } from '../agents';
-import { parseSuggestions, type SuggestedReply } from '../parse-suggestions';
-import { stripSuggestionsTag } from '../strip-suggestions-tag';
+import type { SuggestedReply } from '../parse-suggestions';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
@@ -76,7 +75,7 @@ export function useConversation(
     };
   }, []);
 
-  // Stream SSE events to display, fire suggestion API at agent_end
+  // Stream SSE events to display. Fire /api/suggestions at agent_end.
   const readStream = useCallback(
     async (response: Response, signal: AbortSignal) => {
       const reader = response.body?.getReader();
@@ -85,7 +84,6 @@ export function useConversation(
       const decoder = new TextDecoder();
       let sseBuffer = '';
       let currentMsgId: string | null = null;
-      const lastAgentRaw: Record<string, string> = {};
 
       while (true) {
         if (signal.aborted) break;
@@ -133,20 +131,9 @@ export function useConversation(
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
-              const chunk = event.data.content;
-              // Track full raw content for this message (handles both incremental and re-emit)
-              const prevRaw = lastAgentRaw[targetId] || '';
-              // Re-emit detection: if chunk contains all previous content, it's a replacement
-              if (prevRaw.length > 0 && chunk.length >= prevRaw.length && chunk.startsWith(prevRaw)) {
-                lastAgentRaw[targetId] = chunk;
-              } else {
-                lastAgentRaw[targetId] = prevRaw + chunk;
-              }
-              // Display only content before [SUGGESTIONS (handles partial tag during streaming)
-              const visible = stripSuggestionsTag(lastAgentRaw[targetId]);
               setDisplayMessages((prev) =>
                 prev.map((m) =>
-                  m.id === targetId ? { ...m, content: visible } : m,
+                  m.id === targetId ? { ...m, content: m.content + event.data.content } : m,
                 ),
               );
               break;
@@ -155,28 +142,41 @@ export function useConversation(
             case 'agent_end': {
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
-              // Parse suggestions from raw content (one LLM call, zero delay)
-              const rawText = lastAgentRaw[msgId] || '';
-              const { cleanContent, replies } = parseSuggestions(rawText);
-              if (replies.length > 0) {
-                setSuggestedReplies(replies);
-              }
-
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
-                if (sealed) {
+                if (sealed && sealed.content.trim()) {
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: cleanContent }],
+                      parts: [{ type: 'text' as const, text: sealed.content }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-                  return prev.map((m) =>
-                    m.id === msgId ? { ...m, content: cleanContent } : m,
-                  );
+                  // Fire suggestion API from inside updater (has access to sealed.content)
+                  const mc = getCurrentModelConfig();
+                  fetch('/api/suggestions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      lastAgentMessage: sealed.content,
+                      apiKey: mc.apiKey,
+                      baseUrl: mc.baseUrl || undefined,
+                      model: mc.modelString,
+                      providerType: mc.providerType,
+                    }),
+                    signal,
+                  })
+                    .then(async (res) => {
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data.replies) && data.replies.length > 0) {
+                          setSuggestedReplies(data.replies.slice(0, 3));
+                        }
+                      }
+                    })
+                    .catch(() => {});
                 }
                 return prev;
               });
