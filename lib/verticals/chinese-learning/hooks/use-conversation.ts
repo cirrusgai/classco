@@ -85,6 +85,7 @@ export function useConversation(
       let sseBuffer = '';
       let currentMsgId: string | null = null;
       let lastAgentText = '';
+      const lastAgentRaw: Record<string, string> = {};
 
       while (true) {
         if (signal.aborted) break;
@@ -133,13 +134,21 @@ export function useConversation(
             case 'text_delta': {
               const targetId = event.data.messageId ?? currentMsgId;
               if (!targetId) break;
+              const chunk = event.data.content;
+              // Track full raw content for this message (handles both incremental and re-emit)
+              const prevRaw = lastAgentRaw[targetId] || '';
+              // Re-emit detection: if chunk contains all previous content, it's a replacement
+              if (prevRaw.length > 0 && chunk.length >= prevRaw.length && chunk.startsWith(prevRaw)) {
+                lastAgentRaw[targetId] = chunk;
+              } else {
+                lastAgentRaw[targetId] = prevRaw + chunk;
+              }
+              // Display only content before [SUGGESTIONS
+              const visible = lastAgentRaw[targetId].split('[SUGGESTIONS')[0];
               setDisplayMessages((prev) =>
-                prev.map((m) => {
-                  if (m.id !== targetId) return m;
-                  // Append delta, hide [SUGGESTIONS from display
-                  const updated = m.content + event.data.content;
-                  return { ...m, content: updated.split('[SUGGESTIONS')[0] };
-                }),
+                prev.map((m) =>
+                  m.id === targetId ? { ...m, content: visible } : m,
+                ),
               );
               break;
             }
@@ -148,45 +157,56 @@ export function useConversation(
               const msgId = event.data.messageId;
               const agentId = event.data.agentId;
               // Extract text synchronously via state updater, then fire suggestion API
+              // Get clean text from our raw tracking (handles re-emits correctly)
+              const rawText = lastAgentRaw[msgId] || '';
+              const cleanText = rawText.split('[SUGGESTIONS')[0].trim();
+
               setDisplayMessages((prev) => {
                 const sealed = prev.find((m) => m.id === msgId);
-                if (sealed && sealed.content.trim()) {
-                  lastAgentText = sealed.content;
+                if (sealed) {
+                  lastAgentText = cleanText;
                   rawMessagesRef.current = [
                     ...rawMessagesRef.current,
                     {
                       id: msgId,
                       role: 'assistant' as const,
-                      parts: [{ type: 'text' as const, text: sealed.content }],
+                      parts: [{ type: 'text' as const, text: cleanText }],
                       metadata: { agentId, senderName: sealed.agentName, agentColor: sealed.agentColor },
                     },
                   ];
-                  // Fire suggestion API from inside updater where we have the text
-                  const mc = getCurrentModelConfig();
-                  fetch('/api/suggestions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      lastAgentMessage: sealed.content,
-                      apiKey: mc.apiKey,
-                      baseUrl: mc.baseUrl || undefined,
-                      model: mc.modelString,
-                      providerType: mc.providerType,
-                    }),
-                    signal,
-                  })
-                    .then(async (res) => {
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (Array.isArray(data.replies) && data.replies.length > 0) {
-                          setSuggestedReplies(data.replies.slice(0, 3));
-                        }
-                      }
-                    })
-                    .catch(() => {});
+                  // Ensure display is clean
+                  return prev.map((m) =>
+                    m.id === msgId ? { ...m, content: cleanText } : m,
+                  );
                 }
                 return prev;
               });
+
+              // Fire suggestion API (non-blocking)
+              if (cleanText) {
+                const mc = getCurrentModelConfig();
+                fetch('/api/suggestions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    lastAgentMessage: cleanText,
+                    apiKey: mc.apiKey,
+                    baseUrl: mc.baseUrl || undefined,
+                    model: mc.modelString,
+                    providerType: mc.providerType,
+                  }),
+                  signal,
+                })
+                  .then(async (res) => {
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (Array.isArray(data.replies) && data.replies.length > 0) {
+                        setSuggestedReplies(data.replies.slice(0, 3));
+                      }
+                    }
+                  })
+                  .catch(() => {});
+              }
               currentMsgId = null;
               break;
             }
