@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { getScenarioById } from '@/lib/verticals/chinese-learning/scenarios';
 import { getCurrentModelConfig } from '@/lib/utils/model-config';
+import { useUserProfileStore } from '@/lib/store/user-profile';
 import { ReviewTranscript } from '@/components/chinese-learning/review-transcript';
 import { ReviewVocabulary } from '@/components/chinese-learning/review-vocabulary';
 import type { SavedSession, SessionReview } from '@/lib/verticals/chinese-learning/types';
@@ -53,6 +54,7 @@ export default function ReviewPage() {
 
     try {
       const mc = getCurrentModelConfig();
+      const learnerLanguage = useUserProfileStore.getState().learnerLanguage || 'English';
       const res = await fetch(`/api/sessions/${sessionId}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,6 +63,7 @@ export default function ReviewPage() {
           baseUrl: mc.baseUrl || undefined,
           model: mc.modelString,
           providerType: mc.providerType,
+          learnerLanguage,
         }),
       });
 

@@ -57,11 +57,12 @@ export async function POST(
     const targetVocabulary = scenario?.targetVocabulary ?? [];
 
     const body = await req.json().catch(() => ({}));
-    const { apiKey, baseUrl, model, providerType } = body as {
+    const { apiKey, baseUrl, model, providerType, learnerLanguage } = body as {
       apiKey?: string;
       baseUrl?: string;
       model?: string;
       providerType?: string;
+      learnerLanguage?: string;
     };
 
     const { model: resolvedModel } = resolveModel({
@@ -71,7 +72,7 @@ export async function POST(
       providerType,
     });
 
-    const prompt = buildReviewPrompt(session.messages, targetVocabulary);
+    const prompt = buildReviewPrompt(session.messages, targetVocabulary, learnerLanguage);
 
     const { text } = await generateText({
       model: resolvedModel,
