@@ -7,7 +7,6 @@ import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { getScenarioById } from '@/lib/verticals/chinese-learning/scenarios';
-import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 import { ReviewTranscript } from '@/components/chinese-learning/review-transcript';
 import { ReviewVocabulary } from '@/components/chinese-learning/review-vocabulary';
@@ -53,18 +52,11 @@ export default function ReviewPage() {
     setIsAnalyzing(true);
 
     try {
-      const mc = getCurrentModelConfig();
       const learnerLanguage = useUserProfileStore.getState().learnerLanguage || 'English';
       const res = await fetch(`/api/sessions/${sessionId}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: mc.apiKey,
-          baseUrl: mc.baseUrl || undefined,
-          model: mc.modelString,
-          providerType: mc.providerType,
-          learnerLanguage,
-        }),
+        body: JSON.stringify({ learnerLanguage }),
       });
 
       if (res.ok) {

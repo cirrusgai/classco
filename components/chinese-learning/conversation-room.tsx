@@ -71,8 +71,6 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
     }
   }, [endSession, router, addEntry, scenario.id]);
 
-  const isConfigError = error === 'configureProvider';
-
   return (
     <div className="flex h-screen flex-col bg-background">
       <motion.header
@@ -105,7 +103,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
 
       {error && (
         <div className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive">
-          {isConfigError ? t('chineseLearning.room.configureProvider') : error}
+          {error}
         </div>
       )}
 
@@ -140,7 +138,7 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
             onSend={handleSend}
             onStop={stopStreaming}
             isStreaming={isStreaming}
-            disabled={isConfigError}
+            disabled={false}
             prefill={inputPrefill}
             onPrefillConsumed={() => setInputPrefill('')}
           />

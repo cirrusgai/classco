@@ -57,20 +57,10 @@ export async function POST(
     const targetVocabulary = scenario?.targetVocabulary ?? [];
 
     const body = await req.json().catch(() => ({}));
-    const { apiKey, baseUrl, model, providerType, learnerLanguage } = body as {
-      apiKey?: string;
-      baseUrl?: string;
-      model?: string;
-      providerType?: string;
-      learnerLanguage?: string;
-    };
+    const { learnerLanguage } = body as { learnerLanguage?: string };
 
-    const { model: resolvedModel } = resolveModel({
-      modelString: model,
-      apiKey,
-      baseUrl,
-      providerType,
-    });
+    // Use server-configured model (DEFAULT_MODEL + server API keys)
+    const { model: resolvedModel } = resolveModel({});
 
     const prompt = buildReviewPrompt(session.messages, targetVocabulary, learnerLanguage);
 

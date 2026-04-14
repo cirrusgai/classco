@@ -6,25 +6,17 @@ import { apiError, apiSuccess, API_ERROR_CODES } from '@/lib/server/api-response
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { lastAgentMessage, learnerLanguage, apiKey, baseUrl, model, providerType } = body as {
+    const { lastAgentMessage, learnerLanguage } = body as {
       lastAgentMessage: string;
       learnerLanguage?: string;
-      apiKey?: string;
-      baseUrl?: string;
-      model?: string;
-      providerType?: string;
     };
 
     if (!lastAgentMessage) {
       return apiError(API_ERROR_CODES.MISSING_REQUIRED_FIELD, 400, 'Missing lastAgentMessage');
     }
 
-    const { model: resolvedModel } = resolveModel({
-      modelString: model,
-      apiKey,
-      baseUrl,
-      providerType,
-    });
+    // Use server-configured model (DEFAULT_MODEL + server API keys)
+    const { model: resolvedModel } = resolveModel({});
 
     const { text } = await generateText({
       model: resolvedModel,

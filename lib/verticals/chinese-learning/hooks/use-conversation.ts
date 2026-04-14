@@ -5,7 +5,6 @@ import type { UIMessage } from 'ai';
 import type { ChatMessageMetadata, DirectorState, StatelessEvent } from '@/lib/types/chat';
 import type { ScenarioTemplate, Difficulty, SuggestedReply } from '../types';
 import { scenarioToAgents } from '../agents';
-import { getCurrentModelConfig } from '@/lib/utils/model-config';
 import { useUserProfileStore } from '@/lib/store/user-profile';
 
 export interface ConversationMessage {
@@ -74,19 +73,6 @@ export function useConversation(
   );
 
   const [suggestedReplies, setSuggestedReplies] = useState<SuggestedReply[]>([]);
-
-  // Build model config once for reuse
-  const getModelConfig = useCallback(() => {
-    const mc = getCurrentModelConfig();
-    return {
-      apiKey: mc.apiKey,
-      baseUrl: mc.baseUrl || undefined,
-      model: mc.modelString,
-      providerType: mc.providerType,
-      requiresApiKey: mc.requiresApiKey,
-      isServerConfigured: mc.isServerConfigured,
-    };
-  }, []);
 
   // Stream SSE events to display. Fire /api/suggestions at agent_end.
   const readStream = useCallback(
@@ -176,17 +162,12 @@ export function useConversation(
 
               // Fire suggestion API OUTSIDE the state updater — updaters must be pure
               if (sealedContent) {
-                const mc = getCurrentModelConfig();
                 fetch('/api/suggestions', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     lastAgentMessage: sealedContent,
                     learnerLanguage: learnerLanguageRef.current,
-                    apiKey: mc.apiKey,
-                    baseUrl: mc.baseUrl || undefined,
-                    model: mc.modelString,
-                    providerType: mc.providerType,
                   }),
                   signal,
                 })
@@ -235,7 +216,7 @@ export function useConversation(
       options: { triggerAgentId?: string; discussionTopic?: string; discussionPrompt?: string; freshDirectorState?: boolean },
       signal: AbortSignal,
     ) => {
-      const mc = getModelConfig();
+      // No client-side model config — server uses DEFAULT_MODEL + server-configured API keys
       const requestBody = {
         messages,
         storeState: {
@@ -253,14 +234,9 @@ export function useConversation(
           discussionPrompt: options.discussionPrompt,
           ...(options.triggerAgentId ? { triggerAgentId: options.triggerAgentId } : {}),
         },
-        // Fresh state for independent requests (e.g. assistant) so turnCount starts at 0
         directorState: options.freshDirectorState ? undefined : directorStateRef.current,
         userProfile: { nickname: useUserProfileStore.getState().nickname || undefined },
-        apiKey: mc.apiKey,
-        baseUrl: mc.baseUrl,
-        model: mc.model,
-        providerType: mc.providerType,
-        requiresApiKey: mc.requiresApiKey,
+        apiKey: '',
       };
 
       const response = await fetch('/api/chat', {
@@ -277,18 +253,12 @@ export function useConversation(
 
       await readStream(response, signal);
     },
-    [getModelConfig, readStream],
+    [readStream],
   );
 
   // Run a full turn: scene agents respond, then assistant provides tips
   const runTurn = useCallback(
     async (messages: UIMessage<ChatMessageMetadata>[], isInitial: boolean) => {
-      const mc = getModelConfig();
-      if (!mc.apiKey && mc.requiresApiKey !== false && !mc.isServerConfigured) {
-        setError('configureProvider');
-        return;
-      }
-
       const sceneAgentIds = agents.sceneAgents.map((a) => a.id);
       const allConfigs = agents.allAgentConfigs.map(
         ({ createdAt: _c, updatedAt: _u, isDefault: _d, ...rest }) => rest,
@@ -329,7 +299,7 @@ export function useConversation(
         abortControllerRef.current = null;
       }
     },
-    [agents, scenario.setting, getModelConfig, streamRequest],
+    [agents, scenario.setting, streamRequest],
   );
 
   const startConversation = useCallback(async () => {
