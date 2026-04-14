@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
-import { Send, Mic, MicOff, Loader2, Square } from 'lucide-react';
+import { Send, Mic, Circle, Loader2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/hooks/use-i18n';
@@ -90,7 +90,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, prefill, onPr
           {isProcessing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : isRecording ? (
-            <MicOff className="h-4 w-4" />
+            <Circle className="h-4 w-4 animate-pulse fill-red-500" />
           ) : (
             <Mic className="h-4 w-4" />
           )}
