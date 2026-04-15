@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { Volume2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConversationMessage } from '@/lib/verticals/chinese-learning/hooks/use-conversation';
 import { ChineseText } from './chinese-text';
@@ -10,9 +11,12 @@ interface MessageBubbleProps {
   message: ConversationMessage;
   vocabularyDict: Record<string, VocabEntry>;
   showHints: boolean;
+  isPlaying?: boolean;
+  isLoadingAudio?: boolean;
+  onReplay?: (id: string) => void;
 }
 
-export function MessageBubble({ message, vocabularyDict, showHints }: MessageBubbleProps) {
+export function MessageBubble({ message, vocabularyDict, showHints, isPlaying, isLoadingAudio, onReplay }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -55,6 +59,18 @@ export function MessageBubble({ message, vocabularyDict, showHints }: MessageBub
             <span className="animate-pulse text-muted-foreground">...</span>
           )}
         </div>
+        {!isUser && message.content && onReplay && (
+          <button
+            onClick={() => onReplay(message.id)}
+            className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {isLoadingAudio ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Volume2 className={cn('h-3 w-3', isPlaying && 'text-primary animate-pulse')} />
+            )}
+          </button>
+        )}
       </div>
 
       {isUser && <div className="w-8 shrink-0" />}

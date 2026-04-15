@@ -14,9 +14,12 @@ interface MessageListProps {
   isThinking: boolean;
   vocabularyDict: Record<string, VocabEntry>;
   showHints: boolean;
+  playingId?: string | null;
+  loadingId?: string | null;
+  onReplay?: (id: string) => void;
 }
 
-export function MessageList({ messages, isThinking, vocabularyDict, showHints }: MessageListProps) {
+export function MessageList({ messages, isThinking, vocabularyDict, showHints, playingId, loadingId, onReplay }: MessageListProps) {
   const { t } = useI18n();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +53,9 @@ export function MessageList({ messages, isThinking, vocabularyDict, showHints }:
               message={msg}
               vocabularyDict={vocabularyDict}
               showHints={showHints}
+              isPlaying={msg.id === playingId}
+              isLoadingAudio={msg.id === loadingId}
+              onReplay={onReplay}
             />
         ))}
         {isThinking && messages.length > 0 && (

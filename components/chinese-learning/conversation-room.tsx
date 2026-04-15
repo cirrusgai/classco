@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, Volume2, VolumeX } from 'lucide-react';
+import { useConversationTTS, TTS_MUTE_KEY } from '@/lib/verticals/chinese-learning/hooks/use-conversation-tts';
 import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,21 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
   } = useConversation(scenario, difficulty);
 
   const { addEntry } = useSessionHistory();
+
+  const [ttsMuted, setTtsMuted] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(TTS_MUTE_KEY) === 'true';
+  });
+
+  const toggleMute = useCallback(() => {
+    setTtsMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem(TTS_MUTE_KEY, String(next));
+      return next;
+    });
+  }, []);
+
+  const { playingId, loadingId, replayMessage, stopPlayback } = useConversationTTS(sceneMessages, ttsMuted);
 
   const [inputPrefill, setInputPrefill] = useState('');
   const [showContext, setShowContext] = useState(true);
@@ -90,6 +106,14 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
           {t(`chineseLearning.difficulty.${difficulty}`)}
         </Badge>
         <Button
+          variant={ttsMuted ? 'ghost' : 'secondary'}
+          size="icon"
+          onClick={toggleMute}
+          aria-label={ttsMuted ? 'Unmute' : 'Mute'}
+        >
+          {ttsMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </Button>
+        <Button
           variant="outline"
           size="sm"
           onClick={handleEnd}
@@ -128,6 +152,9 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
             isThinking={isThinking}
             vocabularyDict={scenario.vocabularyDict}
             showHints={true}
+            playingId={playingId}
+            loadingId={loadingId}
+            onReplay={replayMessage}
           />
           <SuggestedReplies
               replies={suggestedReplies}
