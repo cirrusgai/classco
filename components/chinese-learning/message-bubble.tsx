@@ -13,10 +13,10 @@ interface MessageBubbleProps {
   showHints: boolean;
   isPlaying?: boolean;
   isLoadingAudio?: boolean;
-  onReplay?: (id: string) => void;
+  onTogglePlay?: (id: string, text: string) => void;
 }
 
-export function MessageBubble({ message, vocabularyDict, showHints, isPlaying, isLoadingAudio, onReplay }: MessageBubbleProps) {
+export function MessageBubble({ message, vocabularyDict, showHints, isPlaying, isLoadingAudio, onTogglePlay }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -59,16 +59,19 @@ export function MessageBubble({ message, vocabularyDict, showHints, isPlaying, i
             <span className="animate-pulse text-muted-foreground">...</span>
           )}
         </div>
-        {!isUser && message.content && onReplay && (
+        {!isUser && message.content && onTogglePlay && (
           <button
-            onClick={() => onReplay(message.id)}
+            onClick={() => onTogglePlay(message.id, message.content)}
             className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
           >
             {isLoadingAudio ? (
               <Loader2 className="h-3 w-3 animate-spin" />
+            ) : isPlaying ? (
+              <Volume2 className="h-3 w-3 text-primary animate-pulse" />
             ) : (
-              <Volume2 className={cn('h-3 w-3', isPlaying && 'text-primary animate-pulse')} />
+              <Volume2 className="h-3 w-3" />
             )}
+            <span>{isPlaying ? 'Stop' : 'Play'}</span>
           </button>
         )}
       </div>
