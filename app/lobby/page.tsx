@@ -1,9 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { useI18n } from '@/lib/hooks/use-i18n';
+import type { Difficulty } from '@/lib/verticals/chinese-learning/types';
+import { DIFFICULTY_VARIANT } from '@/lib/verticals/chinese-learning/constants';
+import { Badge } from '@/components/ui/badge';
 import { getAllScenarios } from '@/lib/verticals/chinese-learning/scenarios';
 import { ScenarioCard } from '@/components/chinese-learning/scenario-card';
 import { ScenarioRecommendation } from '@/components/chinese-learning/scenario-recommendation';
@@ -21,6 +24,17 @@ export default function LobbyPage() {
     () => new Set(history.map((e) => e.scenarioId)),
     [history],
   );
+
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'all'>('all');
+  const FILTERS: Array<{ value: Difficulty | 'all'; key: string }> = [
+    { value: 'all', key: 'chineseLearning.lobby.allLevels' },
+    { value: 'beginner', key: 'chineseLearning.difficulty.beginner' },
+    { value: 'intermediate', key: 'chineseLearning.difficulty.intermediate' },
+    { value: 'advanced', key: 'chineseLearning.difficulty.advanced' },
+  ];
+  const filteredScenarios = difficultyFilter === 'all'
+    ? scenarios
+    : scenarios.filter((s) => s.difficulty === difficultyFilter);
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,8 +63,21 @@ export default function LobbyPage() {
           onSelect={(id) => router.push(`/room/${id}`)}
         />
 
+        <div className="mb-6 flex flex-wrap justify-center gap-2">
+          {FILTERS.map(({ value, key }) => (
+            <Badge
+              key={value}
+              variant={difficultyFilter === value ? (value === 'all' ? 'default' : DIFFICULTY_VARIANT[value as Difficulty]) : 'outline'}
+              className="cursor-pointer px-3 py-1 text-xs"
+              onClick={() => setDifficultyFilter(value)}
+            >
+              {t(key)}
+            </Badge>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {scenarios.map((scenario, i) => (
+          {filteredScenarios.map((scenario, i) => (
             <ScenarioCard
               key={scenario.id}
               scenario={scenario}
@@ -61,7 +88,7 @@ export default function LobbyPage() {
           ))}
         </div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {scenarios.length} {t('chineseLearning.lobby.scenariosAvailable')}
+          {filteredScenarios.length} {t('chineseLearning.lobby.scenariosAvailable')}
         </p>
       </div>
     </div>

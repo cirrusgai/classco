@@ -8,6 +8,7 @@ export const chineseLearningZhCN = {
       completedOnce: '已完成 1 次',
       completedTimes: '已完成 {count} 次',
       scenariosAvailable: '个场景可选',
+      allLevels: '全部',
     },
     difficulty: {
       beginner: '入门',
@@ -70,6 +71,7 @@ export const chineseLearningEnUS = {
       completedOnce: 'Completed once',
       completedTimes: 'Completed {count} times',
       scenariosAvailable: 'scenarios available',
+      allLevels: 'All',
     },
     difficulty: {
       beginner: 'Beginner',
