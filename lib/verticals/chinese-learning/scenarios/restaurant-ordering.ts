@@ -23,14 +23,6 @@ export const restaurantOrdering: ScenarioTemplate = {
       speakingStyle:
         'Speaks in a friendly, slightly sing-song Mandarin with occasional informal expressions. Uses food-related vocabulary naturally and explains dishes briefly when asked. Repeats orders back to confirm accuracy. Uses polite but casual register.',
     },
-    {
-      role: 'regular customer',
-      name: '陈先生',
-      personality:
-        'A friendly regular in his 30s who comes for lunch almost every day. Happy to share recommendations and point out his favorite dishes on the menu. Enjoys chatting with new faces and is enthusiastic about the restaurant\'s dumplings.',
-      speakingStyle:
-        'Relaxed conversational tone, uses some food slang and descriptors. Speaks naturally and does not slow down unless asked. Good-natured and easy to talk to.',
-    },
   ],
   targetVocabulary: [
     '菜单',

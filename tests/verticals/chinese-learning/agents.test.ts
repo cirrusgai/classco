@@ -48,7 +48,6 @@ describe('scenarioToAgents', () => {
   it('scene agent names match scenario template', () => {
     const { sceneAgents } = scenarioToAgents(scenario, 'beginner');
     expect(sceneAgents[0].name).toBe('王阿姨');
-    expect(sceneAgents[1].name).toBe('陈先生');
   });
 
   it('passes difficulty to persona builder', () => {

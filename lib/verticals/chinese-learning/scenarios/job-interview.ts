@@ -23,14 +23,6 @@ export const jobInterview: ScenarioTemplate = {
       speakingStyle:
         'Clear, measured Mandarin with standard pronunciation. Uses formal interview vocabulary naturally. Asks open-ended questions and follows up with clarifying probes. Avoids rushing but maintains a steady pace through the agenda.',
     },
-    {
-      role: 'department head',
-      name: '张总',
-      personality:
-        'The direct and practical head of the marketing department, late 40s, who cares most about results and team fit. He cuts to the chase with scenario-based questions and is unimpressed by rehearsed answers. He values candidates who think on their feet and are honest about their weaknesses. Occasionally blunt but fair-minded.',
-      speakingStyle:
-        'Faster-paced conversational Mandarin with a business-casual register. Uses practical, results-oriented language. Asks follow-up challenges such as "Can you give me a concrete example?" Keeps answers short himself and expects the candidate to carry the conversation.',
-    },
   ],
   targetVocabulary: [
     '面试',

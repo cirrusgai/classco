@@ -23,14 +23,6 @@ export const casualHangout: ScenarioTemplate = {
       speakingStyle:
         'Fast-paced and animated, peppered with contemporary internet slang like 绝绝子 and 好耶. Uses 语气词 such as 呀, 啊, 嘛, and 吧 constantly. Asks questions in rapid succession when excited. Occasionally switches a single English loanword into a sentence (e.g., "太cute了") — though she keeps it mostly Chinese.',
     },
-    {
-      role: 'laid-back friend',
-      name: '大伟',
-      personality:
-        'A laid-back young man in his mid-20s with a dry sense of humor. He pretends not to care about plans but always ends up having a good time. He has strong opinions about movies — mostly complaints — and delivers them deadpan. Despite his casual exterior, he is loyal and will always offer to pay for the next round of drinks.',
-      speakingStyle:
-        'Slow, unhurried Mandarin with deliberate comedic pauses. Uses understated expressions like 还行, 随便, and 无所谓. Drops dry observations mid-conversation without fanfare. Occasionally contradicts himself (saying 算了 then immediately suggesting the thing he just vetoed). Easy to understand but full of personality.',
-    },
   ],
   targetVocabulary: [
     '周末',

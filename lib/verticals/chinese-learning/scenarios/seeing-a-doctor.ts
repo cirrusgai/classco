@@ -23,14 +23,6 @@ export const seeingADoctor: ScenarioTemplate = {
       speakingStyle:
         'Speaks in a steady, unhurried Mandarin with clear diction. Asks short, direct diagnostic questions one at a time. Uses common words for body parts and symptoms rather than clinical terms. Often confirms with phrases like "是这里吗？" while indicating location. Ends explanations with "明白了吗？" to check comprehension.',
     },
-    {
-      role: 'nurse',
-      name: '小王',
-      personality:
-        'A friendly nurse in her 20s who handles registration, vitals, and general patient logistics. She is efficient and upbeat, good at making nervous first-time patients feel comfortable. Quick to smile and always speaks a little louder to be heard over the clinic noise.',
-      speakingStyle:
-        'Energetic and clear, uses simple instructional language like "请这边走" and "先量一下体温". Breaks down the registration process into small steps. Naturally cheerful — even routine instructions come with a smile in her tone. Occasionally uses softening particles like 啊 and 哦 at the end of sentences.',
-    },
   ],
   targetVocabulary: [
     '头疼',

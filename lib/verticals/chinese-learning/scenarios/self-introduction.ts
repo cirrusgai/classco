@@ -23,14 +23,6 @@ export const selfIntroduction: ScenarioTemplate = {
       speakingStyle:
         'Speaks at a measured pace with clear pronunciation. Uses simple vocabulary and short sentences when chatting with beginners. Asks follow-up questions to keep the conversation flowing naturally. Occasionally uses light humor.',
     },
-    {
-      role: 'curious colleague',
-      name: '张华',
-      personality:
-        'Enthusiastic and talkative, Zhang Hua is a graduate student in linguistics who is fascinated by different cultures. She loves sharing facts about China and is eager to learn about other countries. Very supportive and positive.',
-      speakingStyle:
-        'Speaks with natural enthusiasm, often expressing excitement or surprise. Uses slightly more varied vocabulary than Li Ming but still keeps things accessible. Tends to echo back what she hears to confirm understanding.',
-    },
   ],
   targetVocabulary: [
     '你好',

@@ -23,14 +23,6 @@ export const groceryShopping: ScenarioTemplate = {
       speakingStyle:
         'High-energy, projecting voice over the market noise. Uses market-specific expressions like 称一下 and 便宜卖 naturally. Throws in exclamations like 哎呀！ and 对对对！. Occasionally repeats the price twice for emphasis. Warm and persuasive — every item is "今天特别新鲜".',
     },
-    {
-      role: 'fellow shopper',
-      name: '赵奶奶',
-      personality:
-        'A retired grandmother in her late 60s who shops at this market every morning. She has strong opinions about which stalls have the best produce and is happy to share unsolicited but genuine advice. Suspicious of overpricing and will whisper comparisons to the learner like a seasoned insider.',
-      speakingStyle:
-        'Speaks in a calm, measured tone with a grandmotherly warmth. Uses older, slightly formal expressions mixed with neighborhood slang. Pauses to reflect before giving advice. Occasionally complains gently about rising prices while still buying enthusiastically.',
-    },
   ],
   targetVocabulary: [
     '苹果',

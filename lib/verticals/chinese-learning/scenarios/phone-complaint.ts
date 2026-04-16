@@ -23,14 +23,6 @@ export const phoneComplaint: ScenarioTemplate = {
       speakingStyle:
         'Polished but slightly robotic call-center Mandarin. Uses formulaic phrases such as 非常抱歉给您带来不便 and 请您稍等. Speaks at a measured pace with a customer-service tone. Avoids colloquialisms. Will repeat scripted apologies if pushed but eventually runs out of answers and escalates.',
     },
-    {
-      role: 'supervisor',
-      name: '王主管',
-      personality:
-        'A pragmatic supervisor in her 30s who has the authority to offer compensation — vouchers, partial refunds, or expedited reshipping. She is more direct than the frontline agent and less scripted. She will listen to the complaint summary, acknowledge the failure, and make a concrete offer. However, she will not exceed her compensation ceiling without a fight, and she expects the customer to be specific about what they want.',
-      speakingStyle:
-        'Direct, efficient Mandarin with a professional but warmer tone than the frontline agent. Uses fewer filler phrases and gets to the point quickly. Asks clarifying questions about what resolution the customer expects. Will push back on unreasonable demands with polite firmness.',
-    },
   ],
   targetVocabulary: [
     '投诉',
