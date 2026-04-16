@@ -421,9 +421,9 @@ async function generateMiniMaxTTS(
     throw new Error(`MiniMax TTS error: No audio data in response. Response: ${JSON.stringify(data)}`);
   }
 
-  // Decode base64-encoded audio using Buffer (server-side Node.js)
-  const base64Audio = data.data.audio as string;
-  const audio = new Uint8Array(Buffer.from(base64Audio, 'base64'));
+  // MiniMax returns hex-encoded audio data
+  const hexAudio = data.data.audio as string;
+  const audio = new Uint8Array(Buffer.from(hexAudio, 'hex'));
 
   return {
     audio,
