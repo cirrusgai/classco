@@ -29,12 +29,19 @@ export function useConversationTTS() {
       });
       if (!res.ok) return null;
       const data = await res.json();
-      if (!data.base64) return null;
-      const binary = atob(data.base64);
+      if (!data.base64) {
+        console.error('[TTS] No base64 in response', data);
+        return null;
+      }
+      // Decode base64 — strip any whitespace/newlines first
+      const cleanBase64 = data.base64.replace(/\s/g, '');
+      const binary = atob(cleanBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: `audio/${data.format || 'mp3'}` });
-      return URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      console.log(`[TTS] Audio ready: ${bytes.length} bytes, format=${data.format}`);
+      return url;
     } catch {
       return null;
     }
@@ -85,11 +92,13 @@ export function useConversationTTS() {
       setPlayingId(null);
       currentAudioRef.current = null;
     };
-    audio.onerror = () => {
+    audio.onerror = (e) => {
+      console.error('[TTS] Audio error:', e);
       setPlayingId(null);
       currentAudioRef.current = null;
     };
-    audio.play().catch(() => {
+    audio.play().catch((err) => {
+      console.error('[TTS] Play failed:', err);
       setPlayingId(null);
       currentAudioRef.current = null;
     });
