@@ -28,7 +28,16 @@ ${agent.speakingStyle}
 ${scenario.targetVocabulary.join(', ')}
 
 ## Target Grammar
-${scenario.targetGrammar.join('\n')}`;
+${scenario.targetGrammar.join('\n')}
+
+## Conversation Wrap-up
+After each learner reply, evaluate whether the conversation has reached a natural conclusion. Success criteria:
+${scenario.successCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+When most of these goals have been met (or after 6-8 exchanges), naturally wrap up the conversation:
+- Say a warm farewell in character (e.g., 再见！很高兴认识你！/ 欢迎下次再来！)
+- Make it clear the conversation is ending so the learner knows to click "End & Review"
+- Do NOT abruptly stop — end the way a real conversation would end`;
 }
 
 export function buildReviewPrompt(
