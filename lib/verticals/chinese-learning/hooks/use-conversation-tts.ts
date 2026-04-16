@@ -67,37 +67,31 @@ export function useConversationTTS(messages: ConversationMessage[], muted: boole
     });
   }, []);
 
-  // Auto-play new agent messages
-  useEffect(() => {
+  // Play TTS for a specific message (called externally when agent_end fires)
+  const playMessageTTS = useCallback((msgId: string, text: string) => {
     if (muted) return;
-    const lastMsg = messages[messages.length - 1];
-    if (!lastMsg) return;
-    if (lastMsg.role !== 'assistant') return;
-    if (playedIdsRef.current.has(lastMsg.id)) return;
-    if (!lastMsg.content.trim()) return;
+    if (playedIdsRef.current.has(msgId)) return;
+    if (!text.trim()) return;
 
-    playedIdsRef.current.add(lastMsg.id);
+    playedIdsRef.current.add(msgId);
 
-    // Check cache first
-    const cached = audioCacheRef.current.get(lastMsg.id);
+    const cached = audioCacheRef.current.get(msgId);
     if (cached) {
-      playAudio(cached, lastMsg.id);
+      playAudio(cached, msgId);
       return;
     }
 
-    // Fetch and play
-    setLoadingId(lastMsg.id);
-    fetchTTS(lastMsg.content).then((blobUrl) => {
+    setLoadingId(msgId);
+    fetchTTS(text).then((blobUrl) => {
       setLoadingId(null);
       if (blobUrl) {
-        audioCacheRef.current.set(lastMsg.id, blobUrl);
-        // Only play if still not muted and no other audio started
+        audioCacheRef.current.set(msgId, blobUrl);
         if (!currentAudioRef.current) {
-          playAudio(blobUrl, lastMsg.id);
+          playAudio(blobUrl, msgId);
         }
       }
     });
-  }, [messages, muted, fetchTTS, playAudio]);
+  }, [muted, fetchTTS, playAudio]);
 
   // Manual replay
   const replayMessage = useCallback(async (msgId: string) => {
@@ -137,5 +131,5 @@ export function useConversationTTS(messages: ConversationMessage[], muted: boole
     };
   }, []);
 
-  return { playingId, loadingId, replayMessage, stopPlayback };
+  return { playingId, loadingId, playMessageTTS, replayMessage, stopPlayback };
 }

@@ -55,7 +55,21 @@ export function ConversationRoom({ scenario, difficulty, onBack }: ConversationR
     });
   }, []);
 
-  const { playingId, loadingId, replayMessage, stopPlayback } = useConversationTTS(sceneMessages, ttsMuted);
+  const { playingId, loadingId, playMessageTTS, replayMessage, stopPlayback } = useConversationTTS(sceneMessages, ttsMuted);
+
+  // Auto-play TTS when streaming finishes and there's a new agent message
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    const wasStreaming = prevStreamingRef.current;
+    prevStreamingRef.current = isStreaming;
+    // Trigger when streaming just stopped
+    if (wasStreaming && !isStreaming && sceneMessages.length > 0) {
+      const lastMsg = sceneMessages[sceneMessages.length - 1];
+      if (lastMsg.role === 'assistant' && lastMsg.content.trim()) {
+        playMessageTTS(lastMsg.id, lastMsg.content);
+      }
+    }
+  }, [isStreaming, sceneMessages, playMessageTTS]);
 
   const [inputPrefill, setInputPrefill] = useState('');
   const [showContext, setShowContext] = useState(true);
