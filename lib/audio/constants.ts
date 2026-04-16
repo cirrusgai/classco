@@ -668,6 +668,46 @@ export const TTS_PROVIDERS: Record<TTSProviderId, TTSProviderConfig> = {
     speedRange: { min: 0.7, max: 1.2, default: 1.0 },
   },
 
+  'minimax-tts': {
+    id: 'minimax-tts',
+    name: 'MiniMax',
+    requiresApiKey: true,
+    defaultBaseUrl: 'https://api.minimaxi.com/v1',
+    icon: '/logos/minimax.svg',
+    voices: [
+      {
+        id: 'Calm_Woman',
+        name: 'Calm Woman',
+        language: 'zh-CN',
+        gender: 'female',
+        description: 'Calm and gentle female voice',
+      },
+      {
+        id: 'Gentle_Woman',
+        name: 'Gentle Woman',
+        language: 'zh-CN',
+        gender: 'female',
+        description: 'Soft and gentle female voice',
+      },
+      {
+        id: 'Confident_Man',
+        name: 'Confident Man',
+        language: 'zh-CN',
+        gender: 'male',
+        description: 'Confident male voice',
+      },
+      {
+        id: 'Calm_Man',
+        name: 'Calm Man',
+        language: 'zh-CN',
+        gender: 'male',
+        description: 'Calm male voice',
+      },
+    ],
+    supportedFormats: ['mp3', 'wav'],
+    speedRange: { min: 0.5, max: 2.0, default: 1.0 },
+  },
+
   'browser-native-tts': {
     id: 'browser-native-tts',
     name: '浏览器原生 (Web Speech API)',
@@ -896,6 +936,7 @@ export const DEFAULT_TTS_VOICES: Record<TTSProviderId, string> = {
   'glm-tts': 'tongtong',
   'qwen-tts': 'Cherry',
   'elevenlabs-tts': 'EXAVITQu4vr4xnSDxMaL',
+  'minimax-tts': 'Calm_Woman',
   'browser-native-tts': 'default',
 };
 

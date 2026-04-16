@@ -134,6 +134,9 @@ export async function generateTTS(
     case 'elevenlabs-tts':
       return await generateElevenLabsTTS(config, text);
 
+    case 'minimax-tts':
+      return await generateMiniMaxTTS(config, text);
+
     case 'browser-native-tts':
       throw new Error(
         'Browser Native TTS must be handled client-side using Web Speech API. This provider cannot be used on the server.',
@@ -369,6 +372,62 @@ async function generateElevenLabsTTS(
   return {
     audio: new Uint8Array(arrayBuffer),
     format: requestedFormat,
+  };
+}
+
+/**
+ * MiniMax TTS implementation (T2A v2 API with base64-encoded audio response)
+ */
+async function generateMiniMaxTTS(
+  config: TTSModelConfig,
+  text: string,
+): Promise<TTSGenerationResult> {
+  const baseUrl = config.baseUrl || TTS_PROVIDERS['minimax-tts'].defaultBaseUrl;
+
+  const response = await fetch(`${baseUrl}/t2a_v2`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'speech-02-hd',
+      text,
+      voice_setting: {
+        voice_id: config.voice,
+        speed: config.speed || 1.0,
+      },
+      audio_setting: {
+        format: 'mp3',
+        sample_rate: 32000,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`MiniMax TTS API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.base_resp?.status_code !== 0) {
+    throw new Error(
+      `MiniMax TTS error: status_code=${data.base_resp?.status_code}, msg=${data.base_resp?.status_msg}`,
+    );
+  }
+
+  if (!data.data?.audio) {
+    throw new Error(`MiniMax TTS error: No audio data in response. Response: ${JSON.stringify(data)}`);
+  }
+
+  // Decode base64-encoded audio using Buffer (server-side Node.js)
+  const base64Audio = data.data.audio as string;
+  const audio = new Uint8Array(Buffer.from(base64Audio, 'base64'));
+
+  return {
+    audio,
+    format: 'mp3',
   };
 }
 

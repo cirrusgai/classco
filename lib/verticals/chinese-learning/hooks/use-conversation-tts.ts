@@ -3,8 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ConversationMessage } from './use-conversation';
 
-const TTS_PROVIDER = 'qwen-tts';
-const TTS_VOICE = 'longxiaochun';
+const TTS_PROVIDER = 'minimax-tts';
+const TTS_VOICE = 'Calm_Woman';
 
 export const TTS_MUTE_KEY = 'cl-tts-muted';
 
