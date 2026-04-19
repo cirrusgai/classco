@@ -234,7 +234,8 @@ export function useConversation(
           discussionPrompt: options.discussionPrompt,
           ...(options.triggerAgentId ? { triggerAgentId: options.triggerAgentId } : {}),
         },
-        directorState: options.freshDirectorState ? undefined : directorStateRef.current,
+        // Always send fresh state — single-agent director skips generation on turnCount > 0
+        directorState: undefined,
         userProfile: { nickname: useUserProfileStore.getState().nickname || undefined },
         apiKey: '',
       };
